@@ -4,6 +4,8 @@ Welcome to p5controls's documentation!
    :hidden:
 
    install
+   introduction
+   drivers
    api/index
 
 Indices and tables
