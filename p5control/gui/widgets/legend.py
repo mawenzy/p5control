@@ -108,17 +108,7 @@ class LegendItemModel(QStandardItemModel):
 class LegendListView(QListView):
     """
     ListView of a legend. Intended to replace pyqtgraph's LegendItem such that
-    the legend can be placed seperately as a standalone widget. Usage:
-
-    ```py
-    from pyqtgraph import PlotWidget()
-    
-    plot = PlotWidget()
-    legend = LegendListView()
-
-    # connect legend
-    legend.connectToPlotItem(plot.plotItem)
-    ```
+    the legend can be placed seperately as a standalone widget.
     """
 
     def __init__(

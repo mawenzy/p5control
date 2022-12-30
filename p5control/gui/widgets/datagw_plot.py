@@ -14,8 +14,10 @@ from .legend import LegendListView
 
 
 class CustomPlotWidget(QWidget):
+    """This is the custom plot widget"""
 
     new_data = Signal(str)
+    """emitted if new data was plotted"""
 
     def __init__(self, dgw):
         super().__init__()
@@ -45,7 +47,7 @@ class CustomPlotWidget(QWidget):
         self.new_data.connect(self._process_data)
 
         self.setAcceptDrops(True)
-
+        
     def add_dataset(self, path):
         with self.lock:
             name = path.split("/")[-1]
@@ -148,11 +150,3 @@ class CustomPlotWidget(QWidget):
                 pass
 
         e.ignore()
-
-    # def dragLeaveEvent(self, e: QDragLeaveEvent) -> None:
-    #     print("dragLeaveEvent")
-    #     return super().dragLeaveEvent(e)
-
-    # def dragMoveEvent(self, e: QDragMoveEvent) -> None:
-    #     print("dragMoveEvent")
-    #     return super().dragMoveEvent(e)

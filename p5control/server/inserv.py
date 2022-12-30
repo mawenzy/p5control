@@ -49,9 +49,10 @@ class InstrumentServer(BaseServer):
     ) -> None:
         """Create an instance of the specified class and add it to the instrument server.
 
-        Args:
-            name: Alias for the device
-            ...
+        Parameters
+        ----------
+        name: str
+            Alias for the device
         """
         if name in self._devices:
             raise InstrumentServerError(f'device with name "{name}" already exists.')
@@ -169,17 +170,6 @@ class InstrumentServer(BaseServer):
         name: str = None,
     ):
         """Get a measurement of all the devices added to the instrument server.
-
-        Usage:
-        ```py
-        with gw.measure():
-            # do your measurement
-        ```
-        or name it
-        ```py
-        with gw.measure("my_experiment"):
-            # do your measurement
-        ```
         """
         # create measurement if none exists
         if not self._measurement:

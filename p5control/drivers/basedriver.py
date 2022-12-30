@@ -1,5 +1,4 @@
-"""
-Base Class for a driver, as an example using pyvisa
+"""Base Class for a driver, as an example using pyvisa
 """
 import logging
 import pyvisa
@@ -14,14 +13,14 @@ class BaseDriverError(Exception):
 
 class BaseDriver:
     """Base class for a driver. Implements some common funcionality for a
-    message base driver with some address.
+    message base driver with a given address.
 
     Inherit this class when implementing your own driver. Overwrite the different
     functions as detailed below to allow the server to automatically collect data
     and track the status of the instrument.
-      
-    Thread-Safety
-    ---------
+
+    **Thread-Safety:**
+
     pyvisa itself is a thread safe library, so it is not necessary to think about
     thread safety for this simple driver. If you use a different library, make
     sure that it is thread safe or implement a driver-wide lock to stop weird
@@ -38,20 +37,18 @@ class BaseDriver:
         for example termination of requests and replies. After this, call
         `self.open()` to open the connection to the device
 
-        Inheritance
-        -----------
-        parameter `name` is required, `InstrumentServer._add` creates an instance
-        by calling class_ref(name, *args, **kwargs). This is done such that
+        **Inheritance**: parameter `name` is required, `InstrumentServer._add` creates an instance
+        by calling class_ref(name, \*args, \*\*kwargs). This is done such that
         different instances of the driver can be dinstinguished if you own an 
         instrument multiple times
 
         Parameters
         ----------
-        name: str
+        name : str
             name for the device this driver is for
-        address: str
+        address : str
             visa adress of the resource
-        refresh_delay: float = 0.5s
+        refresh_delay : float, default = 0.5
             time spend asleep between self.get_data() calls in the measuremet thread
         """
         self._name = name
