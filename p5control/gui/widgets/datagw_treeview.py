@@ -12,12 +12,12 @@ from qtpy.QtWidgets import QTreeView, QAbstractItemView, QMenu
 from qtpy.QtGui import QStandardItemModel, QStandardItem, QIcon, QAction
 
 # TODO: this loads icons, change it to a general case
-import os
-import qtpy
-import hdf5view
-basedir = os.path.dirname(hdf5view.__file__)
-resource_path = os.path.join(basedir, "resources", "images")
-qtpy.QtCore.QDir.addSearchPath('icons', resource_path)
+# import os
+# import qtpy
+# import hdf5view
+# basedir = os.path.dirname(hdf5view.__file__)
+# resource_path = os.path.join(basedir, "resources", "images")
+# qtpy.QtCore.QDir.addSearchPath('icons', resource_path)
 
 from ...gateway import DataGateway
 
