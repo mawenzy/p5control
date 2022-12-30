@@ -12,3 +12,4 @@ dependencies:
   - h5py
   - pyvisa
   - qtpy
+  - pyside6
