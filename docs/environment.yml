@@ -11,3 +11,5 @@ dependencies:
   - pyqtgraph
   - pyqt
   - h5py
+  - pyvisa
+  - qtpy
