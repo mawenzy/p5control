@@ -1,0 +1,12 @@
+# conda dependencies for building docs
+channels:
+  - conda-forge
+dependencies:
+  - pip
+  - sphinx
+  - sphinx-copybutton
+  - sphinx_rtd_theme
+  - rpyc
+  - numpy
+  - pyqtgraph
+  - pyqt

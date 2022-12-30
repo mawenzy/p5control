@@ -1,0 +1,28 @@
+[build-system]
+# These are the assumed default build requirements from pip:
+# https://pip.pypa.io/en/stable/reference/pip/#pep-517-and-518-support
+requires = ['setuptools>=40.8.0', 'wheel']
+build-backend = 'setuptools.build_meta'
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+skip-string-normalization = true
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.check-manifest]
+ignore = ['.travis.yml']
