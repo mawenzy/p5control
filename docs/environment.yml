@@ -9,7 +9,7 @@ dependencies:
   - rpyc
   - numpy
   - pyqtgraph
-  - pyqt
+  - pyqt6
   - h5py
   - pyvisa
   - qtpy
