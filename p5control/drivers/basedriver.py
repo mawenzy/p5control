@@ -134,7 +134,14 @@ class BaseDriver:
             specify the time period after which new data is requested, can be used to overwrite
             the value from initialization
         """
-        delay = self.refresh_delay if refresh_delay is None else refresh_delay
+        if refresh_delay:
+            delay = refresh_delay
+        else:
+            # automatically set delay if attribute 'refresh_delay' is not set
+            if hasattr(self, 'refresh_delay'):
+                delay = getattr(self, 'refresh_delay')
+            else:
+                delay = 0.5
         logger.info(f'device "{self._name}" measuring with delay {delay}s')
 
         try:
@@ -169,6 +176,13 @@ class BaseDriver:
             except NotImplementedError as e:
                 logger.info(f'device "{self._name}" does not implement get_data, stopping measurement.')
                 break
+        
+        # save any remaining data
+        try:
+            res = self.get_data()
+            self._save_data(hdf5_path, res, dgw)
+        except NotImplementedError:
+            pass        
 
         logger.info(f'stopping measurement of device "{self._name}"')
 
