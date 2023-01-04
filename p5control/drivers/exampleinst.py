@@ -13,25 +13,23 @@ logger = logging.getLogger(__name__)
 class ExampleInst(BaseDriver):
     def __init__(self, name):
         self._name = name
-        self.refresh_delay = 0.5
         self._offset = np.random.rand() * 50
+
         self._amplitude = 1.1
+        self._freq = 1
 
     def open(self):
         logger.debug(f'{self._name}.open()')
-        pass
 
     def close(self):
         logger.debug(f'{self._name}.close()')
-        pass
 
     """
     Status measurement
     """
     def get_status(self):
         logger.debug(f'{self._name}.get_status()')
-        # return np.array([[np.sin(time.time() * 0.01 + self._offset + 0.1*np.random.rand())]])
-        return np.array([[self._amplitude]])
+        return np.array([[self._amplitude, self._freq]])
 
 
     """
@@ -46,7 +44,7 @@ class ExampleInst(BaseDriver):
         now = time.time()
 
         times = np.arange(self.last_time, now, 0.1)
-        values = [self._amplitude * np.sin(t + 0.1*np.random.rand() + self._offset) + 0.3*np.random.rand() for t in times]
+        values = [self._amplitude * np.sin(self._freq*(t + 0.1*np.random.rand()) + self._offset) + 0.3*np.random.rand() for t in times]
         values = np.array(values)
 
         # set time for next cycle
@@ -59,7 +57,10 @@ class ExampleInst(BaseDriver):
         ), axis=1)
 
     """
-    change amplitude
+    change parameters
     """
     def setAmplitude(self, value):
         self._amplitude = value
+
+    def setFrequency(self, value):
+        self._freq = value
