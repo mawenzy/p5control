@@ -27,3 +27,6 @@ Chapters
 
     driver
     inserv
+    dataserv
+    measurement
+    gui
