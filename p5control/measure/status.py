@@ -1,7 +1,6 @@
 """
 Class to facilitate measurement of the status of the instruments
 """
-import os
 import logging
 import threading
 import time
@@ -123,7 +122,7 @@ class StatusMeasurement:
                 for name in list(data_cache.keys()):
                     try:
                         dgw.append(
-                            os.path.join(STATUS_MEASUREMENT_BASE_PATH, name),
+                            f"{STATUS_MEASUREMENT_BASE_PATH}/{name}",
                             data_cache[name]
                         )
                         # data has been send, can delete it from cache

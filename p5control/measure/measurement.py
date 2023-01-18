@@ -1,7 +1,6 @@
 """
 Class to facilitate a measurement, e.g. using a script with a context manager
 """
-import os
 import logging
 import threading
 from typing import Dict, Any
@@ -37,15 +36,15 @@ class Measurement:
         ----------
         devices: 
             which devices the data should be recorded from
-        filename : str, optional 
+        name : str, optional 
             output file for the recorded data. If omitted, will be generated
             automatically
         """
         self._devices = devices
 
         self._name = name if name else next(exp_name_generator)
-        self._name = os.path.join(MEASUREMENT_BASE_PATH, self._name)
-        logger.info(f'measurement with filename "{self._name}"')
+        self._name = f"{MEASUREMENT_BASE_PATH}/{self._name}"
+        logger.info(f'measurement with name "{self._name}"')
 
         # amount of devices
         cnt = len(self._devices)
