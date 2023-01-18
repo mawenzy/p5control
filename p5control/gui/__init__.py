@@ -5,7 +5,9 @@ from .widgets import (
     CustomPlotWidget,
     MonitorValueBox,
     EditValueBox,
-    ValueBoxForm
+    ValueBoxForm,
+    AttributesTableView,
+    ExtendableAttributesTableView
 )
 
 from .cleanupapp import CleanupApp
