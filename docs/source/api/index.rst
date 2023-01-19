@@ -12,6 +12,6 @@ API
     gateway/index
     data/index
     measure/index
-    p5control.gui
-    p5control.gui.widgets
-    p5control.gui.models
+    util/index
+    gui/index
+    settings
