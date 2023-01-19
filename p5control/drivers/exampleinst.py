@@ -1,5 +1,5 @@
 """
-Test driver to test data saving
+Test driver to illustrate the inner workings of *p5control*.
 """
 import logging
 import time
@@ -11,6 +11,14 @@ from .basedriver import BaseDriver
 logger = logging.getLogger(__name__)
 
 class ExampleInst(BaseDriver):
+    """Represents an instrument which magically measures a sine wave.
+
+    Parameters
+    ----------
+    name : str
+        name for this instance
+    """
+
     def __init__(self, name):
         self._name = name
         self._offset = np.random.rand() * 50

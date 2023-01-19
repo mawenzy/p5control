@@ -1,3 +1,6 @@
+"""
+This file provides an interface around an hdf5 file.
+"""
 import time
 import logging
 import threading
@@ -12,20 +15,18 @@ class HDF5FileInterfaceError(Exception):
     """Exceptions concerning the HDF5FileInterface"""
 
 class HDF5FileInterface():
-    """Wrapper around an h5py.File with some added functionality for convenience
+    """Wrapper around an h5py.File with some added functionality for convenience. The file will be open after this class is initialized.
+    
+    Parameters
+    ----------
+    filename : str
+        filename to use for storing the data
     """
 
     def __init__(
         self,
         filename: str,
     ):
-        """
-        Parameters
-        ----------
-
-        filename : str
-            filename to use for storing the data
-        """
         self._filename = filename
 
         self._f = None
@@ -99,9 +100,9 @@ class HDF5FileInterface():
         path: str,
         arr: np.ndarray,
     ) -> None:
-        """Append arr to dataset specified with 'path' along the first axis
-        
-        Creates the dataset if it does not exist
+        """Append ``arr`` to the dataset specified with ``path`` along the first axis. Create the dataset if no dataset at ``path`` exists. This one will have the dimensions of the array with the first axis being infinitely extendable.
+
+        Any callback pointing to this path will be called and provided with the newly appended data.
 
         Parameters
         ----------
@@ -110,9 +111,9 @@ class HDF5FileInterface():
         arr : np.ndarray
             the array to append to the dataset
         
-        Throws
+        Raises
         ------
-        ValueError: if the secondary dimensions are not the same
+        ValueError : if the secondary dimensions are not the same
         """
         # need this lock so that if two threads want to access a dataset
         # which has to be created do not both create it, raising a error
@@ -142,7 +143,7 @@ class HDF5FileInterface():
         id: str,
         path: str,
         func
-    ):
+    ) -> None:
         """Add a callback to call when data is appended to the dataset at `path`,
         called with func(arr)
 
@@ -167,7 +168,13 @@ class HDF5FileInterface():
         self,
         id: str,
     ):
-        """remove callback specified by `id`."""
+        """remove callback specified by ``id``.
+        
+        Raises
+        ------
+        KeyError
+            if there exists no callback with ``id``
+        """
         with self._callback_lock:
             logger.info(f'removing callback "{id}"')
             self._callbacks.pop(id)
@@ -176,17 +183,17 @@ class HDF5FileInterface():
         self, 
         path: str,
     ):
-        """Return the data from the specified dataset
+        """Return the data from the specified dataset. If is preffered to use :meth:`p5control.data.hdf5.HDF5FileInterface.get_dataset_slice` to not transfer to much data. 
         
         Parameters
         ----------
         path : str
             path in the hdf5 file
             
-        Throws
+        Raises
         ------
         HDF5FileInterfaceError
-            if the hdf5 object is not a Dataset
+            if the hdf5 object is not a dataset
         KeyError
             if there exists no object at the path
         """
@@ -204,7 +211,29 @@ class HDF5FileInterface():
         path: str,
         slice,
     ):
+        """Return the data from the specified dataset, indexed with the slice.
+
+        Parameters
+        ----------
+        path : str
+            path in the hdf5 file
+        slice
+            slice to index the desired data
+
+        Raises
+        ------
+        HDF5FileInterfaceError
+            if the hdf5 object is not a dataset
+        KeyError
+            if there exists no object at the path
+        """
         dset = self._f[path]
+
+        if not isinstance(dset, h5py.Dataset):
+            raise HDF5FileInterfaceError(
+                f'hdf5 object at path "{path}" is not a Dataset'
+            )
+
         return dset[slice]
 
     def values(
@@ -237,6 +266,6 @@ class HDF5FileInterface():
     ):
         return self._f[path].shape
 
-    # !!! temporary for viewer.py
     def get_file_handle(self):
+        """do not use!!! bad!!"""
         return self._f
