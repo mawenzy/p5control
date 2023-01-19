@@ -1,3 +1,6 @@
+"""
+This file provides a basic rpyc service which is wrapped to allow for a ThreadedServer to be started and stopped
+"""
 import time
 import threading
 import logging
@@ -11,9 +14,15 @@ class BaseServerError(Exception):
     """Exception related to a Server"""
 
 class BaseServer(Service):
-    """rpyc server with basic functionality service
+    """rpyc server with a service which exposes basic functionality.
+    Implements the python context manager protocoll. The server is configured
+    to only allow public attributes (not starting with "_") to be accessed by
+    the client.
 
-    only public attributes (not starting with "_") can be called by the client
+    Parameters
+    ----------
+    port : int
+        port of the server
     """
 
     def __init__(
