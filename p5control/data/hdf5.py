@@ -140,9 +140,15 @@ class HDF5FileInterface():
                 
                 if isinstance(arr, dict):
                     # convert dict to compound type array
+                    def get_type(k, x):
+                        try:
+                            return (k, x.dtype, x.shape)
+                        except AttributeError:
+                            return (k, type(x))
+
                     arr = np.fromiter(
                         zip(*arr.values()),
-                        dtype=[(k, type(arr[k][0])) for k in arr.keys()]
+                        dtype=[get_type(k, arr[k][0]) for k in arr.keys()]
                     )
 
                 dset = self._create_dataset(path, arr)
