@@ -56,6 +56,7 @@ extensions = [
 autodoc_default_options = {
     'members': True,
     'show-inheritance': True,
+    'member-order': 'bysource'
 }
 autodoc_mock_imports = []
 

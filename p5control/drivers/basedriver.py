@@ -64,7 +64,7 @@ class BaseDriver:
     def open(self):
         """Open connection to the device.
         
-        Throws
+        Raises
         ------
         BaseDriverError
             if an connecton has already been established.
@@ -84,7 +84,7 @@ class BaseDriver:
     def close(self):
         """Close connection to the device and reset self._inst variable to None
         
-        Throws
+        Raises
         ------
         BaseDriverError
             if no connection exists which can be closed
@@ -204,7 +204,7 @@ class BaseDriver:
         array,
         dgw: DataGateway,
     ):
-        """Save data to hdf5 through a gateway
+        """Save data to hdf5 through a gateway. Overwrite this method if you want to change how or where this driver saves it data when being measured.
         
         Parameters
         ----------

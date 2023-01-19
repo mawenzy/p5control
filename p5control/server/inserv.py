@@ -132,6 +132,11 @@ class InstrumentServer(BaseServer):
         """
         logger.debug('stop() called')
 
+        # stop an ongoing measurement
+        if self._measurement and self._measurement._running:
+            logger.debug('stop() stopping running measurement')
+            self._measurement.stop()
+
         # stop status thread
         if self._status_measurement:
             logger.debug('stop() stopping status measurement thread')

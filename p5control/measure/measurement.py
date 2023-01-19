@@ -1,5 +1,7 @@
 """
-Class to facilitate a measurement, e.g. using a script with a context manager
+Class to facilitate a measurement, e.g. using a script with a context manager. For a brief introduction, take a look at the sample project:
+
+* :ref:`example_measurement`
 """
 import logging
 import threading
@@ -21,9 +23,15 @@ class MeasurementError(Exception):
 
 
 class Measurement:
-    """Measure all the provided devices.
-    
-    Implements the python context manager.
+    """Measure all the provided devices. Implements the python context manager. Make sure that only one measurement is running at a time, because otherwise the calls to ``get_data`` of the drivers will interfere with each other.
+
+    Parameters
+    ----------
+    devices :  Dict[str, Any]
+        which devices the data should be recorded from
+    name : str, optional 
+        output name for the recorded data. If omitted, will be generated
+        automatically
     """
 
     def __init__(
@@ -31,15 +39,6 @@ class Measurement:
         devices: Dict[str, Any],
         name: str = None,
     ):
-        """
-        Parameters
-        ----------
-        devices: 
-            which devices the data should be recorded from
-        name : str, optional 
-            output file for the recorded data. If omitted, will be generated
-            automatically
-        """
         self._devices = devices
 
         self._name = name if name else next(exp_name_generator)
