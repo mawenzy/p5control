@@ -106,11 +106,20 @@ class StatusMeasurement:
 
                 # save data to cache  
                 if name in data_cache:
-                    data_cache[name] = np.concatenate((
-                        data_cache[name], 
-                        np.concatenate(([[time.time()]], res), axis=1)))
+                    if isinstance(res, dict):
+                        for k, v in res.items():
+                            data_cache[name][k].append(v)
+                        data_cache[name]["time"].append(time.time())
+                    else:
+                        data_cache[name] = np.concatenate((
+                            data_cache[name], 
+                            np.concatenate(([[time.time()]], res), axis=1)))
                 else:
-                    data_cache[name] = np.concatenate(([[time.time()]], res), axis=1)
+                    if isinstance(res, dict):
+                        data_cache[name] = {k: [v] for k,v in res.items()}
+                        data_cache[name]["time"] = [time.time()]
+                    else:
+                        data_cache[name] = np.concatenate(([[time.time()]], res), axis=1)
 
             """try reconnecting if connection is down"""
             if not dgw._connection:

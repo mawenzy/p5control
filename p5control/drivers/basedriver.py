@@ -249,5 +249,10 @@ class BaseDriver:
         This method is called periodically but with a significant longer period than `get_data` 
         during an actual measurment.
         
-        If this method is not implemented, nothing will get logged"""
+        If this method is not implemented, nothing will get logged.
+        
+        This method should return a dictionary of the form:
+        {"ampl": 1.2, "freq": 2.3},
+        note that "time" will be automatically added in the status_measurement_thread.
+        """
         raise NotImplementedError(f'device "{self._name}" does not implement "get_status".')

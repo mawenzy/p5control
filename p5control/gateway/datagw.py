@@ -33,7 +33,7 @@ class DataGateway(BaseGateway):
         #!!! use obtain with numpy arrays
         return obtain(self._connection.root.get_dataset_slice(path, slice))
 
-    def get_dataset_field(self, path, field, slice):
+    def get_dataset_field(self, path, field, slice=None):
         #!!! use obtain with numpy arrays
         return obtain(self._connection.root.get_dataset_field(path, field, slice))
 

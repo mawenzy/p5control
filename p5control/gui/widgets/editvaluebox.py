@@ -1,3 +1,5 @@
+from typing import Union
+
 from qtpy.QtCore import Slot
 from qtpy.QtWidgets import QAbstractSpinBox
 
@@ -12,6 +14,7 @@ class EditValueBox(MonitorValueBox):
         self,
         dgw: DataGateway,
         path: str,
+        selector: str,
         setter,
         *args,
         **kwargs
@@ -27,7 +30,7 @@ class EditValueBox(MonitorValueBox):
             function to call with setter(new_value) whenever the 
             value is changed by the user
         """
-        super().__init__(dgw, path, *args, **kwargs)
+        super().__init__(dgw, path, selector, *args, **kwargs)
         self.setter = setter
 
         # editable

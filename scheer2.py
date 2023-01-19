@@ -83,8 +83,9 @@ class Scheer2MainWindow(QMainWindow):
         self.setCentralWidget(self.plot_view)
 
         self.form_view = ValueBoxForm(dgw, [
-            ('inst1<sub>ampl</sub>', 'status/inst1', gw.inst1.setAmplitude),
-            ('inst2<sub>ampl</sub>', 'status/inst2', gw.inst2.setAmplitude)
+            ('inst1<sub>ampl</sub>', 'status/inst1', "ampl", gw.inst1.setAmplitude),
+            ('inst1<sub>freq</sub>', 'status/inst1', "freq"),
+            ('inst2<sub>ampl</sub>', 'status/inst2', "ampl", gw.inst2.setAmplitude)
         ])
 
     def init_docks(self):

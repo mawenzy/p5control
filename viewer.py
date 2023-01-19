@@ -25,7 +25,7 @@ from p5control.gui import (
     GuiDataGateway,
     DataGatewayTreeView,
     ExtendableAttributesTableView,
-    DatasetTableView
+    DatasetPropertiesTableView
 )
 
 logging.basicConfig(
@@ -79,7 +79,7 @@ class ViewerMainWindow(QMainWindow):
         """
         self.tree_view = DataGatewayTreeView(self.dgw)
         self.attrs_view = ExtendableAttributesTableView(self.dgw)
-        self.dataset_view = DatasetTableView(self.dgw)
+        self.dataset_view = DatasetPropertiesTableView(self.dgw)
 
         # self.setCentralWidget(self.plot_view)
 
