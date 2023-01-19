@@ -1,8 +1,7 @@
-p5control.gui.widgets package
-=============================
+.. _api_gui_widgets:
 
-Submodules
-----------
+p5control.gui.widgets
+=====================
 
 p5control.gui.widgets.datagw\_plot module
 -----------------------------------------
@@ -48,14 +47,6 @@ p5control.gui.widgets.valueboxform module
 -----------------------------------------
 
 .. automodule:: p5control.gui.widgets.valueboxform
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: p5control.gui.widgets
    :members:
    :undoc-members:
    :show-inheritance:
