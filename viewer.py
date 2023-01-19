@@ -25,7 +25,8 @@ from p5control.gui import (
     GuiDataGateway,
     DataGatewayTreeView,
     ExtendableAttributesTableView,
-    DatasetPropertiesTableView
+    DatasetPropertiesTableView,
+    DatasetTableView
 )
 
 logging.basicConfig(
@@ -80,9 +81,9 @@ class ViewerMainWindow(QMainWindow):
         self.tree_view = DataGatewayTreeView(self.dgw)
         self.attrs_view = ExtendableAttributesTableView(self.dgw)
         self.dataset_view = DatasetPropertiesTableView(self.dgw)
-
-        # self.setCentralWidget(self.plot_view)
-
+        
+        self.data_view = DatasetTableView(self.dgw)
+        self.setCentralWidget(self.data_view)
 
     def init_docks(self):
         """
@@ -120,6 +121,7 @@ class ViewerMainWindow(QMainWindow):
         """
         self.tree_view.selected.connect(self.attrs_view.update_node)
         self.tree_view.selected.connect(self.dataset_view.update_node)
+        self.tree_view.selected.connect(self.data_view.update_node)
 
     def handle_refresh(self):
         self.tree_view.update_data()

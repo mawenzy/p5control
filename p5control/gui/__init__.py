@@ -8,7 +8,8 @@ from .widgets import (
     ValueBoxForm,
     AttributesTableView,
     ExtendableAttributesTableView,
-    DatasetPropertiesTableView
+    DatasetPropertiesTableView,
+    DatasetTableView
 )
 
 from .cleanupapp import CleanupApp

@@ -86,7 +86,7 @@ class DatasetPropertiesTableModel(QAbstractTableModel):
         orientation: Qt.Orientation,
         role: int = ...
         ) -> Any:
-        """responsible for setting the header names"""
+        """responsible for setting the header names."""
         HEADERS = ('Name', 'Value')
 
         if role == Qt.DisplayRole:
@@ -101,15 +101,14 @@ class DatasetPropertiesTableModel(QAbstractTableModel):
         role: int = ...
     ) -> Any:
         """return the data which should be shown at index."""
-        if index.isValid():
+        if index.isValid() and role in (Qt.DisplayRole, Qt.ToolTipRole):
             column = index.column()
             row = index.row()
 
-            if role in (Qt.DisplayRole, Qt.ToolTipRole):
-                if column == 0:
-                    return self.keys[row]
-                elif column == 1:
-                    return self.values[row]
+            if column == 0:
+                return self.keys[row]
+            elif column == 1:
+                return self.values[row]
 
 class DatasetPropertiesTableView(QTableView):
     """``QTableView`` configured to show the properties of the dataset
