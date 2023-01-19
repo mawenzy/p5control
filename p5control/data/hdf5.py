@@ -4,7 +4,7 @@ This file provides an interface around an hdf5 file.
 import time
 import logging
 import threading
-from typing import Tuple
+from typing import Tuple, Union, Any
 
 import h5py
 import numpy as np
@@ -98,9 +98,11 @@ class HDF5FileInterface():
     def append(
         self,
         path: str,
-        arr: np.ndarray,
+        arr: Union[np.ndarray, dict[str, list[Any]]],
     ) -> None:
-        """Append ``arr`` to the dataset specified with ``path`` along the first axis. Create the dataset if no dataset at ``path`` exists. This one will have the dimensions of the array with the first axis being infinitely extendable.
+        """Append ``arr`` to the dataset specified with ``path`` along the first
+        axis. Create the dataset if no dataset at ``path`` exists. This one will
+        have the dimensions of the array with the first axis being infinitely extendable.
 
         Any callback pointing to this path will be called and provided with the newly appended data.
 
@@ -108,8 +110,9 @@ class HDF5FileInterface():
         ----------
         path : str
             path in the hdf5 file
-        arr : np.ndarray
+        arr : np.ndarray or dic
             the array to append to the dataset
+            if a dictionary is povided, it should be of the form dict[str, list[Any]]
         
         Raises
         ------
@@ -121,11 +124,29 @@ class HDF5FileInterface():
             try:
                 dset = self._f[path]
 
+                if isinstance(arr, dict):
+                    # convert dict to compound type array, making sure to use the
+                    # same tuple ordering as in dset
+                    arr = np.fromiter(
+                        zip(*[arr[k] for k in dset.dtype.names]),
+                        dtype = dset.dtype
+                    )
+
                 dset.resize(dset.shape[0] + arr.shape[0], axis=0)
                 dset[-arr.shape[0]:] = arr
 
             except KeyError:
+                # dataset does not exist, create it
+                
+                if isinstance(arr, dict):
+                    # convert dict to compound type array
+                    arr = np.fromiter(
+                        zip(*arr.values()),
+                        dtype=[(k, type(arr[k][0])) for k in arr.keys()]
+                    )
+
                 dset = self._create_dataset(path, arr)
+
         # callbacks
         with self._callback_lock:
             for (id, (p, func)) in self._callbacks.copy().items():
@@ -235,6 +256,24 @@ class HDF5FileInterface():
             )
 
         return dset[slice]
+
+    def get_dataset_field(
+        self,
+        path: str,
+        field: str,
+        slice = None
+    ):
+        dset = self._f[path]
+
+        if not isinstance(dset, h5py.Dataset):
+            raise HDF5FileInterfaceError(
+                f'hdf5 object at path "{path}" is not a Dataset'
+            )
+
+        if slice:
+            return dset[field][slice]
+        else:
+            return dset[field][()]
 
     def values(
         self,
