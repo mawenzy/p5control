@@ -1,3 +1,7 @@
+"""
+This file defines the class :class:`.CleanupApp`, which subclasses ``QApplication`` with some usefull additions. When the signal ``aboutToQuit`` is emitted, ``widget.cleanup()`` is called for every widget, such that you can implement some custom functionality before the widget gets destroyed, e.g. removing installed callbacks.
+"""
+
 import gc
 import sys
 import logging
@@ -12,7 +16,7 @@ class CleanupApp(QApplication):
 
     def __init__(
         self,
-        app_name: str = 'pycontrol',
+        app_name: str = 'p5control',
     ):
         super().__init__(sys.argv)
 
@@ -28,6 +32,8 @@ class CleanupApp(QApplication):
         self.aboutToQuit.connect(self.call_cleanup)
 
     def exec(self, *args, **kwargs):
+        """Overwrites exec to explicitly call the garbage collector after the app
+        has been closed and then logs any leaked_widgets."""
         super().exec(*args, **kwargs)
         # invoke garbage collector to make sure we don't get any false leak reports
         gc.collect()
@@ -42,7 +48,7 @@ class CleanupApp(QApplication):
             logger.debug('No Qt widgets leaked.')
 
     def call_cleanup(self):
-        """last second cleanup. Implement cleanup for a widget to make use of it."""
+        """last second cleanup. Implement ``cleanup`` for a widget to make use of it."""
         for widget in self.allWidgets():
             try:
                 widget.cleanup()
