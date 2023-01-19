@@ -56,7 +56,9 @@ class AttributesTableModel(QAbstractTableModel):
         self.update_model()
  
     def update_model(self):
-        """Reset model and refetch the attributes from the data server."""
+        """Reset model and refetch the attributes from the data server. Since the order
+        of the elements depends on the iterate order of the dictionary, this might change
+        the order in which things appear in the table."""
         if not self.node:
             return
 
@@ -183,6 +185,9 @@ class AttributesTableModel(QAbstractTableModel):
         return False
 
     def add_row(self):
+        """Add an extra row to the attributes, row is filled
+        with a standard key and value."""
+        # a node has to be selected
         if not self.node:
             return 
 
@@ -215,22 +220,29 @@ class AttributesTableModel(QAbstractTableModel):
         self.endInsertRows()
 
     def removeRow(self, row: int, parent: QModelIndex = ...) -> bool:
+        """remove row specified with ``row`` from the attributes"""
         if row < self.row_count:
             # remove it on data server
             self.node.attrs.pop(self.keys[row])
 
-            del self.keys[row]
-            del self.values[row]
-            del self.classes[row]
-
+            # reload model from server
             self.update_model()
 
 
 class AttributesTableView(QTableView):
+    """``QTableView`` configured to show the attributes.
+    
+    Parameters
+    ----------
+    dgw : DataGateway
+        gateway to the data server
+    editable : bool = True
+        whether the elements in the table should be editable
+    """
     
     def __init__(
         self,
-        dgw,
+        dgw: DataGateway,
         *args,
         editable: bool = True,
         **kwargs
@@ -252,9 +264,17 @@ class AttributesTableView(QTableView):
         self,
         path: str
     ):
+        """Call this function to update for which node the attributes are shown.
+
+        Parameters
+        ----------
+        path : str
+            hdf5 node path
+        """
         self.attrs_model.update_node(path)
 
     def remove_selected_rows(self):
+        """Remove all rows which are currently selected."""
         indices = self.selectionModel().selectedIndexes()
 
         rows = list(set([i.row() for i in indices]))
@@ -264,6 +284,14 @@ class AttributesTableView(QTableView):
             self.attrs_model.removeRow(r)
 
 class ExtendableAttributesTableView(QWidget):
+    """Extends ``AttributesTableView`` by adding two buttons to
+    either add or remove rows.
+    
+    Parameters
+    ----------
+    dgw : DataGateway
+        gateway to the data server
+    """
 
     def __init__(
         self,
@@ -292,7 +320,6 @@ class ExtendableAttributesTableView(QWidget):
         layout = QVBoxLayout()
         layout.addWidget(self.attrs_view)
         layout.addWidget(row2)
-        # layout.setContentsMargins(0, 0, 0, 11)
 
         self.setLayout(layout)
 
@@ -301,10 +328,19 @@ class ExtendableAttributesTableView(QWidget):
         self,
         path: str
     ):
+        """Call this function to update for which node the attributes are shown.
+
+        Parameters
+        ----------
+        path : str
+            hdf5 node path
+        """
         self.attrs_view.update_node(path)
 
+    @Slot()
     def remove_pressed(self):
         self.attrs_view.remove_selected_rows()
 
+    @Slot()
     def add_pressed(self):
         self.attrs_view.attrs_model.add_row()
