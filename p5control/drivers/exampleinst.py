@@ -24,7 +24,7 @@ class ExampleInst(BaseDriver):
         self._offset = np.random.rand() * 50
 
         self._amplitude = 1.1
-        self._freq = 1
+        self._freq = 1.0
 
     def open(self):
         logger.debug(f'{self._name}.open()')
@@ -37,8 +37,10 @@ class ExampleInst(BaseDriver):
     """
     def get_status(self):
         logger.debug(f'{self._name}.get_status()')
-        return np.array([[self._amplitude, self._freq]])
-
+        return {
+            "ampl": self._amplitude,
+            "freq": self._freq
+        }
 
     """
     Measurement
