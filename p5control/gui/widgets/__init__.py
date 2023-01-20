@@ -7,3 +7,4 @@ from .valueboxform import ValueBoxForm
 from .attributestable import AttributesTableView, ExtendableAttributesTableView
 from .datasetproperties import DatasetPropertiesTableView
 from .datasettable import DatasetTableView
+from .datasetdims import DatasetDimsTableView

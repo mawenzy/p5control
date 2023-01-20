@@ -9,7 +9,8 @@ from .widgets import (
     AttributesTableView,
     ExtendableAttributesTableView,
     DatasetPropertiesTableView,
-    DatasetTableView
+    DatasetTableView,
+    DatasetDimsTableView
 )
 
 from .cleanupapp import CleanupApp
