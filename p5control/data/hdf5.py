@@ -99,6 +99,7 @@ class HDF5FileInterface():
         self,
         path: str,
         arr: Union[np.ndarray, dict[str, list[Any]]],
+        **kwargs,
     ) -> None:
         """Append ``arr`` to the dataset specified with ``path`` along the first
         axis. Create the dataset if no dataset at ``path`` exists. This one will
@@ -113,6 +114,8 @@ class HDF5FileInterface():
         arr : np.ndarray or dic
             the array to append to the dataset
             if a dictionary is povided, it should be of the form dict[str, list[Any]]
+        **kwargs :
+            set as attributes of the dataset
         
         Raises
         ------
@@ -152,6 +155,10 @@ class HDF5FileInterface():
                     )
 
                 dset = self._create_dataset(path, arr)
+
+        # set attributes
+        for (key, value) in kwargs.items():
+            dset.attrs[key] = value
 
         # callbacks
         with self._callback_lock:
@@ -210,7 +217,9 @@ class HDF5FileInterface():
         self, 
         path: str,
     ):
-        """Return the data from the specified dataset. If is preffered to use :meth:`p5control.data.hdf5.HDF5FileInterface.get_dataset_slice` to not transfer to much data. 
+        """Return the data from the specified dataset. If is preffered to use 
+        :meth:`p5control.data.hdf5.HDF5FileInterface.get_dataset_slice` to 
+        not transfer to much data. 
         
         Parameters
         ----------

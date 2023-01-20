@@ -75,11 +75,11 @@ class DataServer(BaseServer):
     Data operation
     """
 
-    def append(self, path, arr):
+    def append(self, path, arr, **kwargs):
         # copy array to the local machine
         arr = obtain(arr)
         
-        return self._handler.append(path, arr)
+        return self._handler.append(path, arr, **kwargs)
 
     def __getattr__(
         self,
