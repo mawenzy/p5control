@@ -7,7 +7,7 @@ from typing import Any
 
 import h5py
 from qtpy.QtCore import QAbstractTableModel, QModelIndex, Qt, Slot
-from qtpy.QtWidgets import QTableView, QHeaderView
+from qtpy.QtWidgets import QTableView
 
 from ...gateway import DataGateway
 
@@ -132,7 +132,7 @@ class DatasetPropertiesTableView(QTableView):
         self.dataset_model = DatasetPropertiesTableModel(self.dgw)
         self.setModel(self.dataset_model)
 
-        self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        # self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.horizontalHeader().setStretchLastSection(True)
         self.verticalHeader().hide()
 

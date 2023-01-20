@@ -6,7 +6,8 @@ import logging
 
 from qtpy.QtCore import (
     Qt,
-    QTimer
+    QTimer,
+    Slot
 )
 
 from qtpy.QtWidgets import (
@@ -26,7 +27,8 @@ from p5control.gui import (
     DataGatewayTreeView,
     ExtendableAttributesTableView,
     DatasetPropertiesTableView,
-    DatasetTableView
+    DatasetTableView,
+    DatasetDimsTableView
 )
 
 logging.basicConfig(
@@ -81,6 +83,7 @@ class ViewerMainWindow(QMainWindow):
         self.tree_view = DataGatewayTreeView(self.dgw)
         self.attrs_view = ExtendableAttributesTableView(self.dgw)
         self.dataset_view = DatasetPropertiesTableView(self.dgw)
+        self.dims_view = DatasetDimsTableView(self.dgw)
         
         self.data_view = DatasetTableView(self.dgw)
         self.setCentralWidget(self.data_view)
@@ -102,29 +105,48 @@ class ViewerMainWindow(QMainWindow):
         self.dataset_dock = QDockWidget('Dataset', self)
         self.dataset_dock.setMinimumWidth(MIN_DOCK_WIDTH)
         self.dataset_dock.setWidget(self.dataset_view)
-        self.dataset_dock.hide()
+        # self.dataset_dock.hide()
+
+        self.dims_dock = QDockWidget('Dimensions', self)
+        self.dims_dock.setMinimumWidth(MIN_DOCK_WIDTH)
+        self.dims_dock.setWidget(self.dims_view)
 
         # add dock widgets
         self.addDockWidget(Qt.LeftDockWidgetArea, self.tree_dock)
         self.addDockWidget(Qt.RightDockWidgetArea, self.attrs_dock)
         self.addDockWidget(Qt.RightDockWidgetArea, self.dataset_dock)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.dims_dock)
 
         self.view_menu.addActions([
             self.tree_dock.toggleViewAction(),
             self.attrs_dock.toggleViewAction(),
-            self.dataset_dock.toggleViewAction()
+            self.dataset_dock.toggleViewAction(),
+            self.dims_dock.toggleViewAction(),
         ])
 
     def init_signals(self):
         """
         Initialize signals
         """
-        self.tree_view.selected.connect(self.attrs_view.update_node)
-        self.tree_view.selected.connect(self.dataset_view.update_node)
-        self.tree_view.selected.connect(self.data_view.update_node)
+        self.tree_view.selected.connect(self.handle_treeview_selection_changed)
+
+        self.dims_view.dimsChanged.connect(self.data_view.update_dims)
 
     def handle_refresh(self):
         self.tree_view.update_data()
+
+    @Slot(str)
+    def handle_treeview_selection_changed(self, path):
+
+        self.attrs_view.update_node(path)
+        self.dataset_view.update_node(path)
+        self.data_view.update_node(path)
+        self.dims_view.update_node(path)
+
+        self.attrs_view.scrollToTop()
+        self.dataset_view.scrollToTop()
+        self.data_view.scrollToTop()
+        self.dims_view.scrollToTop()
 
 
 if __name__ == "__main__":

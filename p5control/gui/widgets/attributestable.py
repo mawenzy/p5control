@@ -344,3 +344,6 @@ class ExtendableAttributesTableView(QWidget):
     @Slot()
     def add_pressed(self):
         self.attrs_view.attrs_model.add_row()
+
+    def scrollToTop(self):
+        self.attrs_view.scrollToTop()
