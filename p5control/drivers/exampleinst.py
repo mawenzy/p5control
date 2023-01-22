@@ -60,11 +60,11 @@ class ExampleInst(BaseDriver):
         # set time for next cycle
         self.last_time = now
 
-        # format data to shape (length, 2)
-        return np.concatenate((
-            np.reshape(times, (len(times), 1)),
-            np.reshape(values, (len(values), 1))
-        ), axis=1)
+        return {
+            "time": times,
+            "V": values,
+        }
+
 
     """
     change parameters
