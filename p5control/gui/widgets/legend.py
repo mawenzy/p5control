@@ -11,15 +11,12 @@ from qtpy.QtWidgets import (
 )
 
 from qtpy.QtGui import (
-    QDragMoveEvent,
-    QDragLeaveEvent,
     QStandardItemModel,
     QStandardItem,
     QPixmap,
     QPainter,
     QIcon,
     QAction,
-    QDrag,
     QShortcut,
     QKeySequence
 )
@@ -43,18 +40,24 @@ def QPixmapFromItem(item: QGraphicsItem) -> QPixmap:
 
 
 class LegendModel(QStandardItemModel):
+    def __init__(self):
+        super().__init__()
+        self.configs = {}
+
     def addItem(
         self,
         config
     ):
         list_item = QStandardItem(config["path"])
-        list_item.setData(config, Qt.UserRole)
+        list_item.setData(config["id"], Qt.UserRole)
 
         # create icon
         pixmap = QPixmapFromItem(ItemSample(config["plotDataItem"]))
         list_item.setIcon(QIcon(pixmap))
 
         self.invisibleRootItem().appendRow(list_item)
+
+        self.configs[config["id"]] = config
 
     @Slot(str)
     def removeItem(
@@ -64,17 +67,27 @@ class LegendModel(QStandardItemModel):
         for row in range(self.invisibleRootItem().rowCount()):
             list_item = self.invisibleRootItem().child(row, 0)
 
-            item = list_item.data(Qt.UserRole)
+            itemid = list_item.data(Qt.UserRole)
 
-            if item["id"] == id:
+            if itemid == id:
                 self.removeRow(list_item.row())
+                self.configs.pop(id)
                 return
 
     def updateItem(
         self,
         id: str
     ):
-        print(f"updating {id}")
+        for row in range(self.invisibleRootItem().rowCount()):
+            list_item = self.invisibleRootItem().child(row, 0)
+            itemid = list_item.data(Qt.UserRole)
+
+            if itemid == id:
+                list_item.setIcon(QIcon(QPixmapFromItem(
+                    ItemSample(self.configs[id]["plotDataItem"])
+                )))
+
+                list_item.setText(self.configs[id]["name"])
 
     def mimeData(
         self,
@@ -111,7 +124,7 @@ class LegendView(QListView):
         self.setModel(self.legend_model)
 
         ## wrap functions from legend model
-        for fn in ['addItem', 'removeItem']:
+        for fn in ['addItem', 'removeItem', 'updateItem']:
             setattr(self, fn, getattr(self.legend_model, fn))
 
         # delete keyboard shortcut
@@ -138,9 +151,9 @@ class LegendView(QListView):
         #TODO: does this work with multiple    
         for ind in indexes:
             list_item = self.legend_model.itemFromIndex(ind)
-            config = list_item.data(Qt.UserRole)
+            itemid = list_item.data(Qt.UserRole)
 
-            self.deleteRequested.emit(config["id"])
+            self.deleteRequested.emit(itemid)
 
     @Slot(QPoint)
     def _onCustomContextMenu(
@@ -153,12 +166,12 @@ class LegendView(QListView):
         if list_item is None:
             return 
 
-        config = list_item.data(Qt.UserRole)
+        itemid = list_item.data(Qt.UserRole)
 
         menu = QMenu()
 
         remove_action = QAction("remove")
-        remove_action.triggered.connect(lambda: self.deleteRequested.emit(config["id"]))
+        remove_action.triggered.connect(lambda: self.deleteRequested.emit(itemid))
 
         menu.addAction(remove_action)
         menu.exec(self.viewport().mapToGlobal(point))
@@ -177,9 +190,9 @@ class LegendView(QListView):
             index = indexes[0]
             item = self.model().itemFromIndex(index)
 
-            config = item.data(Qt.UserRole)
+            itemid = item.data(Qt.UserRole)
 
-            self.selected.emit(config["id"])
+            self.selected.emit(itemid)
 
         else:
             self.selected.emit("")

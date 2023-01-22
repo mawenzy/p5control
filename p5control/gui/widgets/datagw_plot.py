@@ -8,6 +8,7 @@ from qtpy.QtGui import QDragEnterEvent, QDropEvent, QColor
 from pyqtgraph import PlotWidget, mkColor, mkPen
 
 from .legend import LegendView
+from .plotform import PlotForm
 from ..databuffer import DataBuffer
 from ...util import name_generator, color_cycler
 
@@ -182,6 +183,12 @@ class DataGatewayPlot(QWidget):
         with self.lock:
             for config in self.plots:
                 config["dataBuffer"].cleanup()
+
+    def connectPlotForm(self, plotForm: PlotForm):
+        """Convenience function to setup signal connections
+        between legend, plotForm and self"""
+        self.selectedConfig.connect(plotForm.set_config)
+        plotForm.updatedConfig.connect(self.legend.updateItem)
 
     """
     Dragging support

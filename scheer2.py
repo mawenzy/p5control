@@ -127,8 +127,8 @@ class Scheer2MainWindow(QMainWindow):
         Initialize signals
         """
         self.tree_view.doubleClickedDataset.connect(self.plot_view.add_plot)
-        self.plot_view.selectedConfig.connect(self.plot_form.set_config)
-
+        
+        self.plot_view.connectPlotForm(self.plot_form)
 
 
 
