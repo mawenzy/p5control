@@ -4,12 +4,12 @@ import time
 import h5py
 from qtpy.QtCore import Slot, Signal
 from qtpy.QtWidgets import QWidget, QHBoxLayout
-from qtpy.QtGui import QDragEnterEvent, QDropEvent
+from qtpy.QtGui import QDragEnterEvent, QDropEvent, QColor
 from pyqtgraph import PlotWidget, mkColor, mkPen
 
 from .legend import LegendView
 from ..databuffer import DataBuffer
-from ...util import name_generator
+from ...util import name_generator, color_cycler
 
 # generate unique ids for the plots
 plot_id_generator = name_generator(
@@ -17,10 +17,14 @@ plot_id_generator = name_generator(
     width=4
 )
 
+# cycle through a set of colors
+pen_colors = color_cycler() 
+
+
 class DataGatewayPlot(QWidget):
 
     selectedConfig = Signal(dict)
-    """emitted if a plot is selected"""
+    """emitted if a plot is selected, provides the config dictionary"""
 
     def __init__(self, dgw):
         super().__init__()
@@ -66,7 +70,16 @@ class DataGatewayPlot(QWidget):
             self.selectedConfig.emit({})
 
     @Slot(str)
-    def add_plot(self, path:str):
+    def add_plot(
+        self,
+        path: str,    
+        name: str = None,
+        pen: QColor = None,
+        symbolBrush=(255, 255, 255, 100),
+        symbolPen=(255, 255, 255, 100),
+        symbol: str = None,
+        symbolSize: int = 5,
+    ):
         """
         Add new plot from the dataset at ``path``.
         """
@@ -75,6 +88,13 @@ class DataGatewayPlot(QWidget):
         if not isinstance(node, h5py.Dataset):
             return
 
+        # set default values
+        if name is None:
+            name = path
+
+        if pen is None:
+            pen = next(pen_colors)
+
         compound_names = node.dtype.names
         ndim = node.shape
 
@@ -82,7 +102,11 @@ class DataGatewayPlot(QWidget):
             id = next(plot_id_generator)
             plotDataItem = self.plot_widget.plot(
                 name=id,
-                pen=mkPen(mkColor('k')) # TODO: changing color
+                pen=pen,
+                symbolBrush=symbolBrush,
+                symbolPen=symbolPen,
+                symbol=symbol,
+                symbolSize=symbolSize,
             )
 
             config = {
@@ -91,6 +115,13 @@ class DataGatewayPlot(QWidget):
                 "plotDataItem": plotDataItem,
                 "path": path,
                 "dataBuffer": DataBuffer(self.dgw, path),
+                # settings
+                "name": name,
+                "pen": pen,
+                "symbolBrush": symbolBrush,
+                "symbolPen": symbolPen,
+                "symbol": symbol,
+                "symbolSize": symbolSize,
             }
 
             # set defaults for x and y indexing
