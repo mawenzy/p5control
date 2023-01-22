@@ -165,6 +165,9 @@ class HDF5FileInterface():
             for (id, (p, func)) in self._callbacks.copy().items():
                 if p == path:
                     try:
+                        #TODO: as this code stands, if a dict comes in, at this
+                        # point arr is no longer a dict but converted to a 
+                        # compound array, is this intentional???
                         func(arr)
                     except EOFError:
                         logger.info(
