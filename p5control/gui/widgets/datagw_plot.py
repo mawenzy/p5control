@@ -1,118 +1,157 @@
 import threading
 import time
 
-import numpy as np
 import h5py
-
-from qtpy.QtCore import QSemaphore, Signal
-from qtpy.QtWidgets import QHBoxLayout, QWidget
-from qtpy.QtGui import QDragEnterEvent, QDropEvent, QDragMoveEvent, QDragLeaveEvent
-
+from qtpy.QtCore import Slot, Signal
+from qtpy.QtWidgets import QWidget, QHBoxLayout
+from qtpy.QtGui import QDragEnterEvent, QDropEvent
 from pyqtgraph import PlotWidget, mkColor, mkPen
 
-from .legend import LegendListView
+from .legend import LegendView
+from ..databuffer import DataBuffer
+from ...util import name_generator
 
+# generate unique ids for the plots
+plot_id_generator = name_generator(
+    "plot",
+    width=4
+)
 
-class CustomPlotWidget(QWidget):
-    """This is the custom plot widget"""
+class DataGatewayPlot(QWidget):
 
-    new_data = Signal(str)
-    """emitted if new data was plotted"""
+    selectedConfig = Signal(dict)
+    """emitted if a plot is selected"""
 
     def __init__(self, dgw):
         super().__init__()
 
         self.dgw = dgw
 
-        self.plots = {}
+        self.plots = []
         self.lock = threading.Lock()
 
-        # plot
+        # plot 
         self.plot_widget = PlotWidget()
         self.plot_widget.setClipToView(True)
         self.plot_widget.setLimits(xMax=0)
         self.plot_widget.setRange(xRange=[-100, 0])
-        self.plot_widget.setLabel('bottom','Time', 's')
+        self.plot_widget.setLabel('bottom', 'Time', 's')
 
         # legend
-        self.legend = LegendListView(customContextMenu=True, dragEnabled=True)
-        self.legend.connectToPlotItem(self.plot_widget.plotItem)
+        self.legend = LegendView(
+            customContextMenu=True,
+            dragEnabled=True)
+
+        # signals
+        self.legend.deleteRequested.connect(self.remove_plot)
+        self.legend.selected.connect(self._onLegendSelected)
 
         # layout
-        self.layout = QHBoxLayout()
-        self.layout.addWidget(self.plot_widget)
-        self.layout.addWidget(self.legend)
-        self.setLayout(self.layout)
+        layout = QHBoxLayout()
+        layout.addWidget(self.plot_widget)
+        layout.addWidget(self.legend)
+        self.setLayout(layout)
 
-        self.new_data.connect(self._process_data)
-
+        # drag and drop support
         self.setAcceptDrops(True)
-        
-    def add_dataset(self, path):
-        with self.lock:
-            name = path.split("/")[-1]
 
-            # if name in self.plots:
-            if path in self.plots:
-                print(f"Plot with name {name} already exists, skipping..")
+    @Slot(str)
+    def _onLegendSelected(self, id:str):
+        for plot in self.plots:
+            if plot["id"] == id:
+                self.selectedConfig.emit(plot)
                 return
 
-            # self.add_plot(name)
-            # self.plots[name]['path'] = path
-            self.add_plot(path)
-            self.plots[path]['path'] = path
+        if id == "":
+            self.selectedConfig.emit({})
 
-    def add_plot(self, name):
-        plt = self.plot_widget.plot(name=name, pen=mkPen(mkColor('k')))
-        self.plots[name] = {
-            'x': [],
-            'y': [],
-            'plt': plt,
-            'sem': QSemaphore(n=1)
-        }
+    @Slot(str)
+    def add_plot(self, path:str):
+        """
+        Add new plot from the dataset at ``path``.
+        """
+        node = self.dgw.get(path)
 
-    def remove_plot(self, name):
-        if name not in self.plots:
-            raise ValueError(f'A plot with the name [{name}] does not exist.')
-        # acquire the semaphore to make it isn't currently plotting
-        sem = self.plots[name]['sem']
-        sem.acquire()
-        # check again in case the plot was just deleted
-        if name not in self.plots:
-            raise ValueError(f'A plot with the name [{name}] does not exist.')
-        plt = self.plots[name]['plot']
-        if plt in self.plot_widget.listDataItems():
-            self.plot_widget.removeItem(plt)
-        del self.plots[name]
-        sem.release()
+        if not isinstance(node, h5py.Dataset):
+            return
 
-    def set_data(self, name: str, xdata, ydata):
+        compound_names = node.dtype.names
+        ndim = node.shape
 
-        self.plots[name]['sem'].acquire()
-        self.plots[name]['x'] = xdata
-        self.plots[name]['y'] = ydata
-        
-        self.new_data.emit(name)
-
-    def _process_data(self, name):
-        try:
-            self.plots[name]['plt'].setData(
-                self.plots[name]['x'], self.plots[name]['y']
+        with self.lock:
+            id = next(plot_id_generator)
+            plotDataItem = self.plot_widget.plot(
+                name=id,
+                pen=mkPen(mkColor('k')) # TODO: changing color
             )
-        except Exception as exc:
-            raise exc
-        finally:
-            self.plots[name]['sem'].release()
+
+            config = {
+                "id": id,
+                "lock": threading.Lock(),
+                "plotDataItem": plotDataItem,
+                "path": path,
+                "dataBuffer": DataBuffer(self.dgw, path),
+            }
+
+            # set defaults for x and y indexing
+            if compound_names:
+                if "time" in compound_names:
+                    config["x"] = "time"
+                    config["y"] = compound_names[0] if compound_names[0] != "time" else compound_names[1]
+                else:
+                    config["x"] = compound_names[0]
+                    config["y"] = compound_names[1]
+            else:
+                if ndim[-1] <= 1:
+                    return
+                config["x"] = 0
+                config["y"] = 1
+
+            self.plots.append(config)
+            self.legend.addItem(config)
+
+    @Slot(str)
+    def remove_plot(self, id:str):
+
+        index = None
+        with self.lock:
+            for i,config in enumerate(self.plots):
+                if config["id"] == id:
+                    index = i
+                    break
+
+            if index is not None:
+
+                if config["plotDataItem"] in self.plot_widget.listDataItems():
+                    self.plot_widget.removeItem(config["plotDataItem"])
+
+                self.legend.removeItem(id)
+
+                lock = config["lock"]
+
+                with lock:
+                    del self.plots[index]
+
 
     def update(self):
         with self.lock:
-            for plot_name in self.plots:
-                path = self.plots[plot_name]['path']
+            for config in self.plots:
+                dataBuffer = config["dataBuffer"]
+                plotDataItem = config["plotDataItem"]
 
-                data = np.rollaxis(self.dgw.get_dataset_slice(path, slice(-1000, None)), axis=1)
+                xdata = dataBuffer.data[config["x"]]
+                ydata = dataBuffer.data[config["y"]]
 
-                self.set_data(plot_name, (data[0] - time.time()), data[1])
-        
+                plotDataItem.setData(
+                    (xdata - time.time()),
+                    ydata
+                )
+
+    def cleanup(self):
+        with self.lock:
+            for config in self.plots:
+                config["dataBuffer"].cleanup()
+
     """
     Dragging support
     """
@@ -144,7 +183,7 @@ class CustomPlotWidget(QWidget):
                 node = self.dgw.get(path)
                 if isinstance(node, h5py.Dataset):
                     e.accept()
-                    self.add_dataset(path)
+                    self.add_plot(path)
                     return
             except KeyError:
                 pass

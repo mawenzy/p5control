@@ -1,8 +1,7 @@
 
 from .widgets import (
     DataGatewayTreeView,
-    LegendListView,
-    CustomPlotWidget,
+    LegendView,
     MonitorValueBox,
     EditValueBox,
     ValueBoxForm,
@@ -10,7 +9,9 @@ from .widgets import (
     ExtendableAttributesTableView,
     DatasetPropertiesTableView,
     DatasetTableView,
-    DatasetDimsTableView
+    DatasetDimsTableView,
+    PlotForm,
+    DataGatewayPlot
 )
 
 from .cleanupapp import CleanupApp
