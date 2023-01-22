@@ -87,7 +87,7 @@ class Scheer2MainWindow(QMainWindow):
 
         self.form_view = ValueBoxForm(dgw, [
             ('inst1<sub>ampl</sub>', '/status/inst1', "ampl", gw.inst1.setAmplitude),
-            ('inst1<sub>freq</sub>', '/status/inst1', "freq"),
+            ('inst1<sub>freq</sub>', '/status/inst1', "freq", gw.inst1.setFrequency),
             ('inst2<sub>ampl</sub>', '/status/inst2', "ampl", gw.inst2.setAmplitude)
         ])
 

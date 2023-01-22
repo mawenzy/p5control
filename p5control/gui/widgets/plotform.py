@@ -1,7 +1,11 @@
+"""
+This file provides a form to edit the config associated with a single
+plotDataItem
+"""
 import h5py
 from qtpy.QtCore import Slot, Signal
 from qtpy.QtWidgets import QFormLayout, QWidget, QComboBox, QLineEdit
-from qtpy.QtGui import QColor
+from qtpy.QtGui import QColor, QIntValidator
 
 from pyqtgraph import ColorButton
 
@@ -33,10 +37,19 @@ class PlotForm(QWidget):
         self.ybox = QComboBox()
         self.pen = ColorButton()
 
+        #TODO: input validation
+        self.maxLength = QLineEdit()
+        self.maxLength.setValidator(QIntValidator(1, 100000))
+        self.downSample = QLineEdit()
+        self.downSample.setValidator(QIntValidator(1, 100))
+
+
         layout.addRow("name", self.name)
         layout.addRow("x", self.xbox)
         layout.addRow("y", self.ybox)
         layout.addRow("pen", self.pen)
+        layout.addRow("bufferLen", self.maxLength)
+        layout.addRow("downSample", self.downSample)
 
         self.setLayout(layout)
 
@@ -45,6 +58,8 @@ class PlotForm(QWidget):
         self.xbox.activated.connect(self._onXBoxActivated)
         self.ybox.activated.connect(self._onYBoxActivated)
         self.pen.sigColorChanged.connect(self._onPenChanged)
+        self.maxLength.editingFinished.connect(self._onMaxLengthEditFinished)
+        self.downSample.editingFinished.connect(self._onDownSampleEditFinished)
 
         self.clear()
 
@@ -59,6 +74,12 @@ class PlotForm(QWidget):
 
         self.pen.setEnabled(False)
         self.pen.setColor(QColor("gray"))
+
+        self.maxLength.clear()
+        self.maxLength.setEnabled(False)
+
+        self.downSample.clear()
+        self.downSample.setEnabled(False)
 
         self.config = {}
 
@@ -81,6 +102,24 @@ class PlotForm(QWidget):
             self.config["name"] = text
         # self.updatedConfig.emit(self.config)
         self.updatedConfig.emit(self.config["id"])
+
+    @Slot()
+    def _onMaxLengthEditFinished(self):
+        text = self.maxLength.text()
+        with self.config["lock"]:
+            self.config["dataBuffer"].reload(
+                max_length = int(text)
+            )
+            self.updatedConfig.emit(self.config["id"])
+
+    @Slot()
+    def _onDownSampleEditFinished(self):
+        text = self.downSample.text()
+        with self.config["lock"]:
+            self.config["dataBuffer"].reload(
+                down_sample = int(text)
+            )
+            self.updatedConfig.emit(self.config["id"])
 
     def _onXBoxActivated(self, index):
         text = self.xbox.itemText(index)
@@ -131,3 +170,11 @@ class PlotForm(QWidget):
         # pen
         self.pen.setColor(config["pen"])
         self.pen.setEnabled(True)
+
+        # maxLength
+        self.maxLength.setText(str(config["dataBuffer"].max_length))
+        self.maxLength.setEnabled(True)
+
+        # downSample
+        self.downSample.setText(str(config["dataBuffer"].down_sample))
+        self.downSample.setEnabled(True)

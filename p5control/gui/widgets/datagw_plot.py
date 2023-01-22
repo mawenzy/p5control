@@ -5,7 +5,7 @@ import h5py
 from qtpy.QtCore import Slot, Signal
 from qtpy.QtWidgets import QWidget, QHBoxLayout
 from qtpy.QtGui import QDragEnterEvent, QDropEvent, QColor
-from pyqtgraph import PlotWidget, mkColor, mkPen
+from pyqtgraph import PlotWidget
 
 from .legend import LegendView
 from .plotform import PlotForm
@@ -91,7 +91,7 @@ class DataGatewayPlot(QWidget):
 
         # set default values
         if name is None:
-            name = path
+            name = path.split("/")[-1]
 
         if pen is None:
             pen = next(pen_colors)

@@ -48,7 +48,7 @@ class LegendModel(QStandardItemModel):
         self,
         config
     ):
-        list_item = QStandardItem(config["path"])
+        list_item = QStandardItem(config["name"])
         list_item.setData(config["id"], Qt.UserRole)
 
         # create icon
