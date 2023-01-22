@@ -51,7 +51,10 @@ class DataBuffer:
         if is gets too long."""
         arr = obtain(arr)
         if self.down_sample > 1:
-            arr = arr[::self.down_sample]
+            if isinstance(arr, dict):
+                arr = {k: v[::self.down_sample] for k,v in arr.items()}
+            else:
+                arr = arr[::self.down_sample]
 
         with self.data_lock:
             if self.data is None:
