@@ -173,6 +173,8 @@ class InstrumentServer(BaseServer):
     def measure(
         self,
         name: str = None,
+        # exclude: List[str],
+        # include: List[str]
     ):
         """Get a measurement of all the devices added to the instrument server.
         """

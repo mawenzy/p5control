@@ -3,6 +3,8 @@
 p5control.gui.widgets
 =====================
 
+This module contains custom qt widgets, which help you quickly create your own gui. Screenshots are included to give you an idea of how the widgets look and what they do. These are taken on linux and therefore might look different on your operating system.
+
 p5control.gui.widgets.datagw\_plot module
 -----------------------------------------
 
@@ -13,6 +15,8 @@ p5control.gui.widgets.datagw\_plot module
 
 p5control.gui.widgets.datagw\_treeview module
 ---------------------------------------------
+
+.. image:: images/datagw_treeview.png
 
 .. automodule:: p5control.gui.widgets.datagw_treeview
    :members:
@@ -45,6 +49,8 @@ p5control.gui.widgets.monitorvaluebox module
 
 p5control.gui.widgets.valueboxform module
 -----------------------------------------
+
+.. image:: images/valueboxform.png
 
 .. automodule:: p5control.gui.widgets.valueboxform
    :members:

@@ -8,6 +8,5 @@ p5control.drivers
 
     basedriver
     exampleinst
-    examplelist
     keysight34461A
     keysightB2962A
