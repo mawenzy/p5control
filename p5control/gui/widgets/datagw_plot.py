@@ -2,8 +2,8 @@ import threading
 import time
 
 import h5py
-from qtpy.QtCore import Slot, Signal
-from qtpy.QtWidgets import QWidget, QHBoxLayout
+from qtpy.QtCore import Slot, Signal, Qt
+from qtpy.QtWidgets import QSplitter, QHBoxLayout, QWidget, QCheckBox, QVBoxLayout
 from qtpy.QtGui import QDragEnterEvent, QDropEvent, QColor
 from pyqtgraph import PlotWidget
 
@@ -22,12 +22,17 @@ plot_id_generator = name_generator(
 pen_colors = color_cycler() 
 
 
-class DataGatewayPlot(QWidget):
+class DataGatewayPlot(QSplitter):
 
     selectedConfig = Signal(dict)
     """emitted if a plot is selected, provides the config dictionary"""
 
-    def __init__(self, dgw):
+    def __init__(
+        self,
+        dgw,
+        showLegend=True,
+        showButtons=True,
+    ):
         super().__init__()
 
         self.dgw = dgw
@@ -47,18 +52,54 @@ class DataGatewayPlot(QWidget):
             customContextMenu=True,
             dragEnabled=True)
 
+        if not showLegend:
+            self.legend.hide()
+
         # signals
         self.legend.deleteRequested.connect(self.remove_plot)
         self.legend.selected.connect(self._onLegendSelected)
 
-        # layout
-        layout = QHBoxLayout()
-        layout.addWidget(self.plot_widget)
-        layout.addWidget(self.legend)
-        self.setLayout(layout)
+        # layout + buttons
+        if showButtons:
+            self.btn_update = QCheckBox("Update time", self)
+            self.btn_update.setChecked(True)
+
+            self.btn_legend = QCheckBox("Legend", self)
+            self.btn_legend.setChecked(showLegend)
+            self.btn_legend.stateChanged.connect(self._onLegendCheckboxChanged)
+
+            buttonLayout = QHBoxLayout()
+            buttonLayout.addWidget(self.btn_update)
+            buttonLayout.addWidget(self.btn_legend)
+            buttonLayout.addStretch()
+            buttonLayout.setContentsMargins(4, 4, 4, 4)
+
+            buttonRow = QWidget()
+            buttonRow.setLayout(buttonLayout)
+
+            plotboxLayout = QVBoxLayout()
+            plotboxLayout.setContentsMargins(0, 0, 0, 0)
+            plotboxLayout.addWidget(self.plot_widget)
+            plotboxLayout.addWidget(buttonRow)
+
+            plotbox = QWidget()
+            plotbox.setLayout(plotboxLayout)
+
+            self.addWidget(plotbox)
+        else:
+            self.addWidget(self.plot_widget)
+        self.addWidget(self.legend)
 
         # drag and drop support
         self.setAcceptDrops(True)
+
+    @Slot(int)
+    def _onLegendCheckboxChanged(self, state:int):
+        if state == 2:
+            # checked
+            self.legend.setVisible(True)
+        else:
+            self.legend.setVisible(False)
 
     @Slot(str)
     def _onLegendSelected(self, id:str):
@@ -166,6 +207,9 @@ class DataGatewayPlot(QWidget):
 
 
     def update(self):
+        if not self.btn_update.isChecked():
+            return
+
         with self.lock:
             for config in self.plots:
                 dataBuffer = config["dataBuffer"]
