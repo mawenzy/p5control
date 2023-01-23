@@ -19,8 +19,9 @@ from p5control.gui import (
     CleanupApp,
     GuiDataGateway,
     DataGatewayTreeView,
-    CustomPlotWidget,
     ValueBoxForm,
+    PlotForm,
+    DataGatewayPlot,
 )
 
 class Scheer2MainWindow(QMainWindow):
@@ -77,15 +78,20 @@ class Scheer2MainWindow(QMainWindow):
         Initialize widgets
         """
         self.tree_view = DataGatewayTreeView(self.dgw)
+        self.tree_view.expandAll()
 
-        self.plot_view = CustomPlotWidget(self.dgw)
+        # self.plot_view = CustomPlotWidget(self.dgw)
+        self.plot_view = DataGatewayPlot(self.dgw)
 
         self.setCentralWidget(self.plot_view)
 
         self.form_view = ValueBoxForm(dgw, [
-            ('inst1<sub>ampl</sub>', 'status/inst1', gw.inst1.setAmplitude),
-            ('inst2<sub>ampl</sub>', 'status/inst2', gw.inst2.setAmplitude)
+            ('inst1<sub>ampl</sub>', '/status/inst1', "ampl", gw.inst1.setAmplitude),
+            ('inst1<sub>freq</sub>', '/status/inst1', "freq", gw.inst1.setFrequency),
+            ('inst2<sub>ampl</sub>', '/status/inst2', "ampl", gw.inst2.setAmplitude)
         ])
+
+        self.plot_form = PlotForm(self.dgw)
 
     def init_docks(self):
         """
@@ -101,20 +107,30 @@ class Scheer2MainWindow(QMainWindow):
         self.form_dock.setMinimumWidth(MIN_DOCK_WIDTH)
         self.form_dock.setWidget(self.form_view)
 
+        self.plot_form_dock = QDockWidget('Plot config', self)
+        self.plot_form_dock.setMinimumWidth(MIN_DOCK_WIDTH)
+        self.plot_form_dock.setWidget(self.plot_form)
+
         # add dock widgets
         self.addDockWidget(Qt.LeftDockWidgetArea, self.tree_dock)
         self.addDockWidget(Qt.RightDockWidgetArea, self.form_dock)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.plot_form_dock)
 
         self.view_menu.addActions([
             self.tree_dock.toggleViewAction(),
-            self.form_dock.toggleViewAction()
+            self.form_dock.toggleViewAction(),
+            self.plot_form_dock.toggleViewAction()
         ])
 
     def init_signals(self):
         """
         Initialize signals
         """
-        self.tree_view.doubleClickedDataset.connect(self.plot_view.add_dataset)
+        self.tree_view.doubleClickedDataset.connect(self.plot_view.add_plot)
+        
+        self.plot_view.connectPlotForm(self.plot_form)
+
+
 
     def update(self):
         self.plot_view.update()

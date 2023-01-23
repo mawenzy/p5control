@@ -30,6 +30,7 @@ class DataBuffer:
             only safe every down_sample'th value
         """
         self.dgw = dgw
+        self.path = path
         self.max_length = max_length
         self.down_sample = down_sample
 
@@ -49,11 +50,14 @@ class DataBuffer:
     def callback(self, arr):
         """Callback which extends the array and deletes starting values
         if is gets too long."""
-        arr = obtain(arr)
-        if self.down_sample > 1:
-            arr = arr[::self.down_sample]
-
         with self.data_lock:
+            arr = obtain(arr)
+            if self.down_sample > 1:
+                if isinstance(arr, dict):
+                    arr = {k: v[::self.down_sample] for k,v in arr.items()}
+                else:
+                    arr = arr[::self.down_sample]
+
             if self.data is None:
                 self.data = arr
             else:
@@ -70,3 +74,26 @@ class DataBuffer:
         """Clear data"""
         with self.data_lock:
             self.data = None
+
+    def reload(
+        self,
+        max_length: int = None,
+        down_sample: int = None,
+    ):
+        max_length = self.max_length if max_length is None else max_length
+        down_sample = self.down_sample if down_sample is None else down_sample
+
+        # this should ideally be in the locked part, but it runs into problems, see:
+        # https://github.com/tomerfiliba-org/rpyc/issues/522,
+        # because the dgw request can handle an incoming callback, which then also tries to lock,
+        # which then does no longer work
+        try:
+            data = self.dgw.get_dataset_slice(self.path, slice(-max_length*down_sample, None, down_sample))
+        except KeyError:
+            return
+
+        with self.data_lock:
+            self.max_length = max_length
+            self.down_sample = down_sample
+
+            self.data = data

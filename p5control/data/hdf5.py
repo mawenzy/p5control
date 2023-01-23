@@ -1,7 +1,10 @@
+"""
+This file provides an interface around an hdf5 file.
+"""
 import time
 import logging
 import threading
-from typing import Tuple
+from typing import Tuple, Union, Any
 
 import h5py
 import numpy as np
@@ -12,20 +15,18 @@ class HDF5FileInterfaceError(Exception):
     """Exceptions concerning the HDF5FileInterface"""
 
 class HDF5FileInterface():
-    """Wrapper around an h5py.File with some added functionality for convenience
+    """Wrapper around an h5py.File with some added functionality for convenience. The file will be open after this class is initialized.
+    
+    Parameters
+    ----------
+    filename : str
+        filename to use for storing the data
     """
 
     def __init__(
         self,
         filename: str,
     ):
-        """
-        Parameters
-        ----------
-
-        filename : str
-            filename to use for storing the data
-        """
         self._filename = filename
 
         self._f = None
@@ -97,22 +98,28 @@ class HDF5FileInterface():
     def append(
         self,
         path: str,
-        arr: np.ndarray,
+        arr: Union[np.ndarray, dict[str, list[Any]]],
+        **kwargs,
     ) -> None:
-        """Append arr to dataset specified with 'path' along the first axis
-        
-        Creates the dataset if it does not exist
+        """Append ``arr`` to the dataset specified with ``path`` along the first
+        axis. Create the dataset if no dataset at ``path`` exists. This one will
+        have the dimensions of the array with the first axis being infinitely extendable.
+
+        Any callback pointing to this path will be called and provided with the newly appended data.
 
         Parameters
         ----------
         path : str
             path in the hdf5 file
-        arr : np.ndarray
+        arr : np.ndarray or dic
             the array to append to the dataset
+            if a dictionary is povided, it should be of the form dict[str, list[Any]]
+        **kwargs :
+            set as attributes of the dataset
         
-        Throws
+        Raises
         ------
-        ValueError: if the secondary dimensions are not the same
+        ValueError : if the secondary dimensions are not the same
         """
         # need this lock so that if two threads want to access a dataset
         # which has to be created do not both create it, raising a error
@@ -120,16 +127,47 @@ class HDF5FileInterface():
             try:
                 dset = self._f[path]
 
+                if isinstance(arr, dict):
+                    # convert dict to compound type array, making sure to use the
+                    # same tuple ordering as in dset
+                    arr = np.fromiter(
+                        zip(*[arr[k] for k in dset.dtype.names]),
+                        dtype = dset.dtype
+                    )
+
                 dset.resize(dset.shape[0] + arr.shape[0], axis=0)
                 dset[-arr.shape[0]:] = arr
 
             except KeyError:
+                # dataset does not exist, create it
+                
+                if isinstance(arr, dict):
+                    # convert dict to compound type array
+                    def get_type(k, x):
+                        try:
+                            return (k, x.dtype, x.shape)
+                        except AttributeError:
+                            return (k, type(x))
+
+                    arr = np.fromiter(
+                        zip(*arr.values()),
+                        dtype=[get_type(k, arr[k][0]) for k in arr.keys()]
+                    )
+
                 dset = self._create_dataset(path, arr)
+
+        # set attributes
+        for (key, value) in kwargs.items():
+            dset.attrs[key] = value
+
         # callbacks
         with self._callback_lock:
             for (id, (p, func)) in self._callbacks.copy().items():
                 if p == path:
                     try:
+                        #TODO: as this code stands, if a dict comes in, at this
+                        # point arr is no longer a dict but converted to a 
+                        # compound array, is this intentional???
                         func(arr)
                     except EOFError:
                         logger.info(
@@ -142,7 +180,7 @@ class HDF5FileInterface():
         id: str,
         path: str,
         func
-    ):
+    ) -> None:
         """Add a callback to call when data is appended to the dataset at `path`,
         called with func(arr)
 
@@ -167,7 +205,13 @@ class HDF5FileInterface():
         self,
         id: str,
     ):
-        """remove callback specified by `id`."""
+        """remove callback specified by ``id``.
+        
+        Raises
+        ------
+        KeyError
+            if there exists no callback with ``id``
+        """
         with self._callback_lock:
             logger.info(f'removing callback "{id}"')
             self._callbacks.pop(id)
@@ -176,17 +220,19 @@ class HDF5FileInterface():
         self, 
         path: str,
     ):
-        """Return the data from the specified dataset
+        """Return the data from the specified dataset. If is preffered to use 
+        :meth:`p5control.data.hdf5.HDF5FileInterface.get_dataset_slice` to 
+        not transfer to much data. 
         
         Parameters
         ----------
         path : str
             path in the hdf5 file
             
-        Throws
+        Raises
         ------
         HDF5FileInterfaceError
-            if the hdf5 object is not a Dataset
+            if the hdf5 object is not a dataset
         KeyError
             if there exists no object at the path
         """
@@ -204,8 +250,48 @@ class HDF5FileInterface():
         path: str,
         slice,
     ):
+        """Return the data from the specified dataset, indexed with the slice.
+
+        Parameters
+        ----------
+        path : str
+            path in the hdf5 file
+        slice
+            slice to index the desired data
+
+        Raises
+        ------
+        HDF5FileInterfaceError
+            if the hdf5 object is not a dataset
+        KeyError
+            if there exists no object at the path
+        """
         dset = self._f[path]
+
+        if not isinstance(dset, h5py.Dataset):
+            raise HDF5FileInterfaceError(
+                f'hdf5 object at path "{path}" is not a Dataset'
+            )
+
         return dset[slice]
+
+    def get_dataset_field(
+        self,
+        path: str,
+        field: str,
+        slice = None
+    ):
+        dset = self._f[path]
+
+        if not isinstance(dset, h5py.Dataset):
+            raise HDF5FileInterfaceError(
+                f'hdf5 object at path "{path}" is not a Dataset'
+            )
+
+        if slice:
+            return dset[field][slice]
+        else:
+            return dset[field][()]
 
     def values(
         self,
@@ -237,6 +323,6 @@ class HDF5FileInterface():
     ):
         return self._f[path].shape
 
-    # !!! temporary for viewer.py
     def get_file_handle(self):
+        """do not use!!! bad!!"""
         return self._f

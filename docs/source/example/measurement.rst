@@ -1,3 +1,4 @@
+.. _example_measurement:
 
 Measurement
 -----------

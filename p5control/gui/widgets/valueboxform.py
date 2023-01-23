@@ -26,12 +26,12 @@ class ValueBoxForm(QWidget):
     def addRow(self, row):
         """Add a row to the layout, row is given by
         
-        row = (label: str, path: str, Optional[setter: func])
+        row = (label: str, path: str, selector: Union[str, slice], Optional[setter: func])
         """
-        if len(row) == 2:
-            self.layout.addRow(row[0], MonitorValueBox(self.dgw, row[1]))
-        elif len(row) == 3:
-            self.layout.addRow(row[0], EditValueBox(self.dgw, row[1], row[2]))
+        if len(row) == 3:
+            self.layout.addRow(row[0], MonitorValueBox(self.dgw, row[1], row[2]))
+        elif len(row) == 4:
+            self.layout.addRow(row[0], EditValueBox(self.dgw, row[1], row[2], row[3]))
         else:
             raise Exception(
                 f"row {row} has wrong format."

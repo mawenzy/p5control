@@ -1,7 +1,6 @@
 """
-Class to facilitate measurement of the status of the instruments
+Class to facilitate measurement of the status of the instruments while the instrument server is running. A thread with this measurement is automatically started with the instrument server.
 """
-import os
 import logging
 import threading
 import time
@@ -19,9 +18,14 @@ class StatusMeasurementError(Exception):
     """Exception related to the status measurement"""
 
 class StatusMeasurement:
-    """Call get_status on all provided devices.
+    """Call ``get_status`` on all provided devices. Implements the python context manager.
 
-    Implements the python context manager.
+    Parameters
+    ----------
+    devices : Dict[str, Any]
+        the devices for which the status should be recorded
+    refresh_delay: float, default = 10
+        pause between collecting status, by default 10s
     """
 
     def __init__(
@@ -38,7 +42,7 @@ class StatusMeasurement:
         self.STATUS_THREAD_STOP_EVENT = threading.Event()
 
     def start(self):
-        """Start the status measurement thread"""
+        """Start the status measurement thread. Does not block but returns after starting the thread."""
         if self._thread:
             raise StatusMeasurementError(
                 'Can\'t start the status measurement because it is already running.'
@@ -51,6 +55,7 @@ class StatusMeasurement:
         self._thread.start()
 
     def stop(self):
+        """Stop the status measurement thread. Blocks until the thread has finished."""
         if not self._thread:
             raise StatusMeasurementError(
                 f'Can\'t stop the status measurement because it is not running.'
@@ -101,11 +106,20 @@ class StatusMeasurement:
 
                 # save data to cache  
                 if name in data_cache:
-                    data_cache[name] = np.concatenate((
-                        data_cache[name], 
-                        np.concatenate(([[time.time()]], res), axis=1)))
+                    if isinstance(res, dict):
+                        for k, v in res.items():
+                            data_cache[name][k].append(v)
+                        data_cache[name]["time"].append(time.time())
+                    else:
+                        data_cache[name] = np.concatenate((
+                            data_cache[name], 
+                            np.concatenate(([[time.time()]], res), axis=1)))
                 else:
-                    data_cache[name] = np.concatenate(([[time.time()]], res), axis=1)
+                    if isinstance(res, dict):
+                        data_cache[name] = {k: [v] for k,v in res.items()}
+                        data_cache[name]["time"] = [time.time()]
+                    else:
+                        data_cache[name] = np.concatenate(([[time.time()]], res), axis=1)
 
             """try reconnecting if connection is down"""
             if not dgw._connection:
@@ -123,7 +137,7 @@ class StatusMeasurement:
                 for name in list(data_cache.keys()):
                     try:
                         dgw.append(
-                            os.path.join(STATUS_MEASUREMENT_BASE_PATH, name),
+                            f"{STATUS_MEASUREMENT_BASE_PATH}/{name}",
                             data_cache[name]
                         )
                         # data has been send, can delete it from cache

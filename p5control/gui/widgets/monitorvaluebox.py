@@ -1,3 +1,5 @@
+from typing import Union
+
 from rpyc.utils.classic import obtain
 
 from qtpy.QtCore import Qt
@@ -14,6 +16,7 @@ class MonitorValueBox(QDoubleSpinBox):
         self,
         dgw: DataGateway,
         path: str,
+        selector: str,
         *args,
         **kwargs
     ):
@@ -24,11 +27,14 @@ class MonitorValueBox(QDoubleSpinBox):
             gateway to the dataserver
         path : str
             dataset path in the hdf5 file
+        selector : str
+            which column to use
         """
         super().__init__(*args, **kwargs)
 
         self.id = next(id_generator)
         self.dgw = dgw
+        self.selector = selector
 
         self.setDecimals(4)
         self.setReadOnly(True)
@@ -40,11 +46,8 @@ class MonitorValueBox(QDoubleSpinBox):
 
         # try getting already existing value
         try:
-            data = self.dgw.get_dataset_slice(
-                path,
-                slice(-1, None)
-            )
-            self.setValue(data[-1][-1])
+            data = self.dgw.get_dataset_field(path, selector, slice(-1, None))[0]
+            self.setValue(data)
         except KeyError:
             # start with "--" before value is set 
             self.setSpecialValueText("--")  
@@ -57,8 +60,9 @@ class MonitorValueBox(QDoubleSpinBox):
         """Callback which extracts the value from the appended array."""
         arr = obtain(arr)
 
+        val = arr[self.selector][-1]
+
         # interesting value
-        val = arr[-1][-1]
         self.setDisabled(False)
         self.setValue(val)
 

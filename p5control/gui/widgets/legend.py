@@ -1,6 +1,6 @@
 from typing import Iterable
 
-from qtpy.QtCore import Signal, Qt, Slot, QPoint, QModelIndex, QMimeData
+from qtpy.QtCore import Signal, Qt, Slot, QPoint, QModelIndex, QMimeData, QItemSelection
 
 from qtpy.QtWidgets import (
     QAbstractItemView,
@@ -11,15 +11,12 @@ from qtpy.QtWidgets import (
 )
 
 from qtpy.QtGui import (
-    QDragMoveEvent,
-    QDragLeaveEvent,
     QStandardItemModel,
     QStandardItem,
     QPixmap,
     QPainter,
     QIcon,
     QAction,
-    QDrag,
     QShortcut,
     QKeySequence
 )
@@ -39,100 +36,104 @@ def QPixmapFromItem(item: QGraphicsItem) -> QPixmap:
     painter.setRenderHint(QPainter.Antialiasing)
     item.paint(painter, QStyleOptionGraphicsItem())
     return pixmap
+    
 
-class LegendItemModel(QStandardItemModel):
-    """
-    Model to hold entries for a Legend.
-    """
+
+class LegendModel(QStandardItemModel):
+    def __init__(self):
+        super().__init__()
+        self.configs = {}
 
     def addItem(
         self,
-        item,
-        name: str
+        config
     ):
-        """
-        Add a new entry to the legend.
-
-        Parameters
-        ----------
-        item: pyqtgraph.PlotDataItem
-            used to determine the line and point style, used to create
-            an Icon representing it
-        name: str
-            The name to display for this item
-        """
-        list_item = QStandardItem(name)
-        list_item.setData(item, Qt.UserRole)
+        list_item = QStandardItem(config["name"])
+        list_item.setData(config["id"], Qt.UserRole)
 
         # create icon
-        pixmap = QPixmapFromItem(ItemSample(item))
+        pixmap = QPixmapFromItem(ItemSample(config["plotDataItem"]))
         list_item.setIcon(QIcon(pixmap))
 
         self.invisibleRootItem().appendRow(list_item)
 
+        self.configs[config["id"]] = config
+
+    @Slot(str)
     def removeItem(
         self,
-        item_or_name
+        id: str
     ):
-        """
-        Remove item by item or its name
-        """
-        if isinstance(item_or_name, str):
-            for item in self.findItems(item_or_name):
-                self.removeRow(item.row())
-        # iterate over all items
-        elif self.invisibleRootItem().hasChildren():
-            for row in range(self.invisibleRootItem().rowCount()):
-                list_item = self.invisibleRootItem().child(row, 0)
-                # test if item_or_name corresponds to item
-                item = list_item.data(Qt.UserRole)
-                if item is item_or_name:
-                    self.removeRow(list_item.row())
-                    return
+        for row in range(self.invisibleRootItem().rowCount()):
+            list_item = self.invisibleRootItem().child(row, 0)
+
+            itemid = list_item.data(Qt.UserRole)
+
+            if itemid == id:
+                self.removeRow(list_item.row())
+                self.configs.pop(id)
+                return
+
+    def updateItem(
+        self,
+        id: str
+    ):
+        for row in range(self.invisibleRootItem().rowCount()):
+            list_item = self.invisibleRootItem().child(row, 0)
+            itemid = list_item.data(Qt.UserRole)
+
+            if itemid == id:
+                list_item.setIcon(QIcon(QPixmapFromItem(
+                    ItemSample(self.configs[id]["plotDataItem"])
+                )))
+
+                list_item.setText(self.configs[id]["name"])
 
     def mimeData(
         self,
         indexes: Iterable[QModelIndex]
     ) -> QMimeData:
         """Send hdf5 path of the item as QMimeData text"""
-        
         item = self.itemFromIndex(indexes[0])
-        path = item.text()
+        config = item.data(Qt.UserRole)
 
         data = QMimeData()
-        data.setText(path)
+        data.setText(config["path"])
 
         return data
 
-        
-class LegendListView(QListView):
-    """
-    ListView of a legend. Intended to replace pyqtgraph's LegendItem such that
-    the legend can be placed seperately as a standalone widget.
-    """
+class LegendView(QListView):
+
+    deleteRequested = Signal(str)
+    """emitted if an element should be remove from the plot, provides id"""
+
+    selected = Signal(str)
+    """emitted if the selection changes, provides the id or "" if there
+    are no longer any elements"""
 
     def __init__(
         self,
-        dragEnabled=False,
-        customContextMenu=False
+        dragEnabled=True,
+        customContextMenu=True
     ):
         super().__init__()
 
-        self.list_model = LegendItemModel()
+        self.legend_model = LegendModel()
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.setMinimumWidth(150)
-        self.setModel(self.list_model)
+        self.setMinimumWidth(100)
+        self.setModel(self.legend_model)
 
-        self.plot_item = None
+        ## wrap functions from legend model
+        for fn in ['addItem', 'removeItem', 'updateItem']:
+            setattr(self, fn, getattr(self.legend_model, fn))
 
-        ## wrap functions from list model
-        for fn in ['addItem', 'removeItem']:
-            setattr(self, fn, getattr(self.list_model, fn))
-
-        # keyboard shortcut
+        # delete keyboard shortcut
         shortcut = QShortcut(QKeySequence.Delete, self)
         shortcut.setContext(Qt.WidgetWithChildrenShortcut)
-        shortcut.activated.connect(self.onDelShortcut)
+        shortcut.activated.connect(self._onDelShortcut)
+
+        # connect new signal
+        self.selectionModel().selectionChanged.connect(self._selectionChanged)
 
         if dragEnabled:
             # enable dragging
@@ -143,79 +144,55 @@ class LegendListView(QListView):
             self.setContextMenuPolicy(Qt.CustomContextMenu)
             self.customContextMenuRequested.connect(self._onCustomContextMenu)
 
-    def onDelShortcut(
-        self,
-    ):
-        """if called, removes all items currently selected."""
+    def _onDelShortcut(self):
+        """remove all items currently selected."""
         indexes = self.selectedIndexes()
 
+        #TODO: does this work with multiple    
         for ind in indexes:
-            list_item = self.model().itemFromIndex(ind)
-            item = list_item.data(Qt.UserRole)
-            self.plot_item.removeItem(item)
+            list_item = self.legend_model.itemFromIndex(ind)
+            itemid = list_item.data(Qt.UserRole)
 
-    def connectToPlotItem(
-        self,
-        plot_item: PlotItem,
-    ):
-        """
-        Connect this legend to plot_item
-        
-        Plots added after this will be automatically displayed in the legend if
-        they are created with a 'name' argument.
-        """
-        plot_item.legend = self
-        self.plot_item = plot_item
+            self.deleteRequested.emit(itemid)
 
     @Slot(QPoint)
     def _onCustomContextMenu(
         self,
         point: QPoint
     ):
-        if self.plot_item:
-            index = self.indexAt(point)
-            list_item = self.model().itemFromIndex(index)
+        index = self.indexAt(point)
+        list_item = self.model().itemFromIndex(index)
 
-            if list_item is None:
-                return 
+        if list_item is None:
+            return 
 
-            name = list_item.text()
-            item = list_item.data(Qt.UserRole)
+        itemid = list_item.data(Qt.UserRole)
 
-            menu = QMenu()
+        menu = QMenu()
 
-            remove_action = QAction("remove")
-            remove_action.triggered.connect(lambda: self.plot_item.removeItem(item))
+        remove_action = QAction("remove")
+        remove_action.triggered.connect(lambda: self.deleteRequested.emit(itemid))
 
-            menu.addAction(remove_action)
-            menu.exec(self.viewport().mapToGlobal(point))
+        menu.addAction(remove_action)
+        menu.exec(self.viewport().mapToGlobal(point))
 
-    def dragLeaveEvent(self, e: QDragLeaveEvent) -> None:
-        print("dragLeaveEvent")
-        return super().dragLeaveEvent(e)
 
-    def dragMoveEvent(self, e: QDragMoveEvent) -> None:
-        print("dragMoveEvent")
-        return super().dragMoveEvent(e)
+    @Slot(QItemSelection, QItemSelection)
+    def _selectionChanged(
+        self,
+        selected: QItemSelection,
+        deselected: QItemSelection
+    ):
+        """Emit selected if the seleciton changes"""
+        indexes = selected.indexes()
 
-    """
-    Code below can be used to remove the item after dragging, but has some problems
-    """
-    # def startDrag(self, supportedActions: Qt.DropAction) -> None:
-    #     # translated c++ code from https://codebrowser.dev/qt5/qtbase/src/widgets/itemviews/qabstractitemview.cpp.html#1029
-    #     indexes = self.selectedIndexes()
-    #     if len(indexes) > 0:
-    #         data = self.model().mimeData(indexes)
-    #         if not data:
-    #             return
-    #         drag = QDrag(self)
-    #         drag.setMimeData(data)
+        if len(indexes) > 0:
+            index = indexes[0]
+            item = self.model().itemFromIndex(index)
 
-    #         res = drag.exec(supportedActions)
+            itemid = item.data(Qt.UserRole)
 
-    #         if res == Qt.DropAction.MoveAction:
-    #             list_item = self.model().itemFromIndex(indexes[0])
-    #             item = list_item.data(Qt.UserRole)
+            self.selected.emit(itemid)
 
-    #             self.plot_item.removeItem(item)
-
+        else:
+            self.selected.emit("")
