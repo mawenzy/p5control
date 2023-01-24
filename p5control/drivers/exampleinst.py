@@ -11,7 +11,7 @@ from .basedriver import BaseDriver
 logger = logging.getLogger(__name__)
 
 class ExampleInst(BaseDriver):
-    """Represents an instrument which magically measures a sine wave.
+    """Represents an instrument which magically measures a sine wave. Both the frequency and the amplitude can be changed.
 
     Parameters
     ----------
@@ -19,7 +19,7 @@ class ExampleInst(BaseDriver):
         name for this instance
     """
 
-    def __init__(self, name):
+    def __init__(self, name: str):
         self._name = name
         self._offset = np.random.rand() * 50
 
@@ -27,15 +27,18 @@ class ExampleInst(BaseDriver):
         self._freq = 1.0
 
     def open(self):
+        """Just logs the call to debug."""
         logger.debug(f'{self._name}.open()')
 
     def close(self):
+        """Just logs the call to debug."""
         logger.debug(f'{self._name}.close()')
 
     """
     Status measurement
     """
     def get_status(self):
+        """Returns the current amplitude and frequency."""
         logger.debug(f'{self._name}.get_status()')
         return {
             "ampl": self._amplitude,
@@ -46,9 +49,16 @@ class ExampleInst(BaseDriver):
     Measurement
     """
     def start_measuring(self):
+        """Start the measurement. Saves the current time such
+        that we can keep track of how much time has passed
+        when :meth:`ExampleInst.get_data` gets called.
+        """
         self.last_time = time.time()
 
     def get_data(self):
+        """Calculates sine wave over the time passed since the
+        last call and adds some noise to it.
+        """
         logger.debug(f'{self._name}.get_data()')
 
         now = time.time()
@@ -69,8 +79,10 @@ class ExampleInst(BaseDriver):
     """
     change parameters
     """
-    def setAmplitude(self, value):
+    def setAmplitude(self, value: float):
+        """Set amplitude to ``value``."""
         self._amplitude = value
 
-    def setFrequency(self, value):
+    def setFrequency(self, value: float):
+        """Set frequency to ``value``."""
         self._freq = value

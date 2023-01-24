@@ -12,7 +12,6 @@ from .GIR2002 import GIR2002
 from .ZNB40 import ZNB40
 
 """
-Test drivers
+Test driver
 """
-from .examplelist import ExampleList
 from .exampleinst import ExampleInst

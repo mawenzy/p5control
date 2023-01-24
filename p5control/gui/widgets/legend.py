@@ -21,7 +21,7 @@ from qtpy.QtGui import (
     QKeySequence
 )
 
-from pyqtgraph import ItemSample, PlotItem
+from pyqtgraph import ItemSample
 
 
 def QPixmapFromItem(item: QGraphicsItem) -> QPixmap:
@@ -95,10 +95,10 @@ class LegendModel(QStandardItemModel):
     ) -> QMimeData:
         """Send hdf5 path of the item as QMimeData text"""
         item = self.itemFromIndex(indexes[0])
-        config = item.data(Qt.UserRole)
+        itemid = item.data(Qt.UserRole)
 
         data = QMimeData()
-        data.setText(config["path"])
+        data.setText(self.configs[itemid]["path"])
 
         return data
 
