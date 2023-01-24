@@ -9,7 +9,22 @@ from typing import Tuple, Union, Any
 import h5py
 import numpy as np
 
+from ..util import name_generator
+
 logger = logging.getLogger(__name__)
+
+# unique id generator for callbacks
+id_generator = name_generator(
+    "id",
+    width=4,
+)
+id_generator_lock = threading.Lock()
+
+def get_callback_id():
+    """Thread save id generator for unique callback ids."""
+    with id_generator_lock:
+        id = next(id_generator)
+    return id
 
 class HDF5FileInterfaceError(Exception):
     """Exceptions concerning the HDF5FileInterface"""
@@ -39,7 +54,7 @@ class HDF5FileInterface():
         self.open()
 
     def open(self):
-        """Open file"""
+        """Open file in mode 'a'"""
         if self._f:
             raise Exception("Can't open h5py.File because it is already open")
 
@@ -165,6 +180,7 @@ class HDF5FileInterface():
             for (id, (p, func)) in self._callbacks.copy().items():
                 if p == path:
                     try:
+                        logger.debug(f'calling callback {id} for {path}')
                         #TODO: as this code stands, if a dict comes in, at this
                         # point arr is no longer a dict but converted to a 
                         # compound array, is this intentional???
@@ -177,7 +193,6 @@ class HDF5FileInterface():
 
     def register_callback(
         self,
-        id: str,
         path: str,
         func
     ) -> None:
@@ -186,20 +201,23 @@ class HDF5FileInterface():
 
         Parameters
         ----------
-        id : str
-            used to identify this callback and be able to remove it
         path : str
             path in the hdf5 file
         func : function(np.ndarray)
             function to call
+
+        Returns
+        -------
+        id : str
+            unique id to identify this callback and be able to remove it
         """
-        if id in self._callbacks:
-            raise Exception(
-                f'Can\'t register_callback with id "{id}", because it already exists.'
-            )
+        id = get_callback_id()
 
         logger.info(f'registering callback "{id}" for dataset: "{path}"')
-        self._callbacks[id] = [path, func]
+        with self._callback_lock:
+            self._callbacks[id] = [path, func]
+
+        return id
 
     def remove_callback(
         self,

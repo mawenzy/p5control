@@ -56,7 +56,7 @@ Registering a callback to be notified with the newly added data is as easy as:
 
 .. code-block:: py
 
-    >>> dgw.register_callback("someID", "status/inst1", lambda arr: print(arr))
+    >>> id = dgw.register_callback("status/inst1", lambda arr: print(arr))
 
 with an unique id for this callback, the path to the dataset in question and the function which should be called each time new data is added.
 

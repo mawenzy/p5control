@@ -6,7 +6,6 @@ from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QDoubleSpinBox, QAbstractSpinBox
 
 from ...gateway import DataGateway
-from ..guisettings import id_generator
 
 class MonitorValueBox(QDoubleSpinBox):
     """Widget which subscribes to a value on the dataserver and
@@ -32,7 +31,6 @@ class MonitorValueBox(QDoubleSpinBox):
         """
         super().__init__(*args, **kwargs)
 
-        self.id = next(id_generator)
         self.dgw = dgw
         self.selector = selector
 
@@ -53,7 +51,7 @@ class MonitorValueBox(QDoubleSpinBox):
             self.setSpecialValueText("--")  
             self.setValue(-10000)
 
-        self.dgw.register_callback(self.id, path, self._callback)
+        self.id = self.dgw.register_callback(path, self._callback)
 
 
     def _callback(self, arr):

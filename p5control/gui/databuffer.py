@@ -4,7 +4,7 @@ import numpy as np
 from rpyc.utils.classic import obtain
 
 from ..gateway import DataGateway
-from .guisettings import DATA_BUFFER_MAX_LENGTH, DOWN_SAMPLE, id_generator
+from .guisettings import DATA_BUFFER_MAX_LENGTH, DOWN_SAMPLE
 
 class DataBuffer:
     """DataBuffer which subscribes to a path on the dataserver and buffers
@@ -34,7 +34,6 @@ class DataBuffer:
         self.max_length = max_length
         self.down_sample = down_sample
 
-        self.id = next(id_generator)
         self.data = None
         self.data_lock = threading.Lock()
 
@@ -45,7 +44,7 @@ class DataBuffer:
         except KeyError:
             pass
 
-        self.dgw.register_callback(self.id, path, self.callback)
+        self.id = self.dgw.register_callback(path, self.callback)
 
     def callback(self, arr):
         """Callback which extends the array and deletes starting values

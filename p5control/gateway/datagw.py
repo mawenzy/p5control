@@ -37,14 +37,14 @@ class DataGateway(BaseGateway):
         #!!! use obtain with numpy arrays
         return obtain(self._connection.root.get_dataset_field(path, field, slice))
 
-    def register_callback(self, id, path, func):
-        logger.info(f'register_callback("{id}", "{path}", {func})')
+    def register_callback(self, path, func):
+        logger.info(f'register_callback("{path}", {func})')
 
         if not self.allow_callback:
             raise BaseGatewayError(
-                f'Can\'t register callback "{id}" because callbacks are not enabled for the gateway')
+                f'Can\'t register callback, because callbacks are not enabled for the gateway')
 
-        self._connection.root.register_callback(id, path, func)
+        return self._connection.root.register_callback(path, func)
 
     def remove_callback(self, id):
         logger.info(f'remove_callback("{id}")')
