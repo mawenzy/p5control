@@ -19,7 +19,12 @@ from qtpy.QtCore import (
 from qtpy.QtWidgets import (
     QMainWindow,
     QApplication,
-    QDockWidget
+    QDockWidget,
+    QAction
+)
+
+from qtpy.QtGui import (
+    QKeySequence
 )
 
 from p5control import (
@@ -68,6 +73,17 @@ class Scheer2MainWindow(QMainWindow):
         Initialize actions
         """
         menu = self.menuBar()
+
+        # file menu
+        self.file_menu = menu.addMenu('&File')
+
+        self.file_menu.addAction(QAction(
+            "Refresh",
+            self,
+            shortcut=QKeySequence.Refresh,
+            statusTip='Refresh TreeView',
+            triggered=self.handle_refresh
+        ))
 
         # view menu
         self.view_menu = menu.addMenu('&View')
@@ -141,7 +157,8 @@ class Scheer2MainWindow(QMainWindow):
         
         self.plot_view.connectPlotForm(self.plot_form)
 
-
+    def handle_refresh(self):
+        self.tree_view.update_data()
 
     def update(self):
         self.plot_view.update()
