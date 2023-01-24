@@ -6,7 +6,6 @@ import logging
 
 from qtpy.QtCore import (
     Qt,
-    QTimer,
     Slot
 )
 
