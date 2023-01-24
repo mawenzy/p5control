@@ -28,6 +28,8 @@ class Keysight34461A(BaseDriver):
         self._inst.write("*RST") # reset the instrument for SCPI operation
         self._inst.query("*OPC?") # wait for the operation to complete
 
+        self.batch = 0
+
     """
     Measuring setup
     """
@@ -38,11 +40,14 @@ class Keysight34461A(BaseDriver):
         self._inst.query("*OPC?")  # wait for the operation to complete
 
         # copied from messprogramm
-        self._inst.write('VOLT:DC:NPLC 0.02')
-        self._inst.write('VOLT:DC:RANG:AUTO ON')
+        self._inst.write('VOLT:DC:NPLC MIN')
+        #don't do autorange, else time axis doesnt work
+        # self._inst.write('VOLT:DC:RANG:AUTO ON')
+        self._inst.write('VOLT:DC:RANG:AUTO OFF')
+        self._inst.write('VOLT:DC:RANG 10')
         self._inst.write(':SENS:VOLT:DC:ZERO:AUTO OFF')
         self._inst.write('TRIG:SOUR IMM') 
-        self._inst.write("TRIG:COUN 10")
+        self._inst.write("TRIG:COUN INF")
         self._inst.write("SAMP:COUN MAX")
 
     def start_measuring(self):
@@ -50,23 +55,30 @@ class Keysight34461A(BaseDriver):
         self.last_time = time.time()
 
     def get_data(self):
+        # create time stamps
+        # now davor, weil intrument brauch verschieden lang zum antworten
+        now = time.time()
+
         data = self._inst.query("R?")
         # see page 205 in programmer manual
         data = np.fromstring(data[2+int(data[1]):], sep=",", dtype='f')
-        # create time stamps
-        now = time.time()
         times = np.linspace(self.last_time, now, len(data), endpoint=False)
 
         # set time for next cycle
         self.last_time = now
 
-        # format data to shape (length, 2)
-        return np.concatenate((
-            np.reshape(times, (len(times), 1)),
-            np.reshape(data, (len(data), 1))
-        ), axis=1)
+        self.batch += 1     
+        self.batch = self.batch%10   
+        return {
+            "time": times,
+            "V": data,
+            "trig": np.ones(np.shape(times))*self.batch*.1
+        }
 
-    
+    # def _save_data(self, hdf5_path: str, array, dgw):
+    #     self.batch += 1        
+    #     return super()._save_data(f"{hdf5_path}/{self.batch:04d}", array, dgw)
+
     def stop_measuring(self):
         self._inst.write("*CLS") # clear status command
         self._inst.write("*RST") # reset the instrument for SCPI operation
