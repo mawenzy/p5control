@@ -42,3 +42,10 @@ class KeysightB2962A(BaseDriver):
             self._inst.write(f"INIT (@1,2)")
         else:
             self._inst.write(f"INIT (@{channel})")
+
+    def query(self, query):
+        return self._inst.query(query)
+    def write(self, write):
+        self._inst.write(write)
+    def read(self):
+        return self._inst.read()
