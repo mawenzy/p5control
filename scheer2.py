@@ -1,3 +1,14 @@
+# setup logging
+import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    filename='scheer2.log',
+    level=logging.DEBUG,
+    filemode='w', # overwrites logs every time this script is started
+    format='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+)
+
 import sys
 
 from qtpy.QtCore import (
