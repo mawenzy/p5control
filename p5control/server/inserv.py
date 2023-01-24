@@ -1,6 +1,6 @@
 import threading
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from .dataserv import DataServer
 from .baseserv import BaseServer, BaseServerError
@@ -173,38 +173,50 @@ class InstrumentServer(BaseServer):
     def measure(
         self,
         name: str = None,
-        # exclude: List[str],
-        # include: List[str]
+        include: List[str] = None,
+        exclude: List[str] = None,
     ):
-        """Get a measurement of all the devices added to the instrument server.
+        """Get a measurement of all the specified devices.If either name or the devices
+        are different than the last measurement, a new one is returned 
+
+        Parameters
+        ----------
+        name : str, optional
+            name of the measurement, will determine the path under which the results are
+            safed in the hdf5 path. I no name is provided, a generic name is automatically
+            generated, which updates with every call.
+        include : List[str], optional
+            specify the instruments to measure, given their names.
+        exclude : List[str], optional
+            if include is not specified, this can be used to exclude some instruments, all
+            others will be measured.
         """
+        # get devices
+        if include is not None:
+            devices = {name: self._devices[name] for name in include}
+        elif exclude is not None:
+            devices = self._devices.copy()
+            for name in exclude:
+                devices.pop(name)
+        else:
+            devices = self._devices
+
         # create measurement if none exists
         if not self._measurement:
-            self._measurement = Measurement(self._devices, name)
+            self._measurement = Measurement(devices, name)
+            return self._measurement
 
-        # if the name is different from the existing measurement, create the new one
-        if name and name != self._measurement._name:
-            self._measurement = Measurement(self._devices, name)
+        # decide if a new measurement is needed
+        ndev = set(devices.keys())
+        odev = set(self._measurement._devices.keys())
 
-        return self._measurement
-
-
-    def new_measurement(
-        self,
-        name: str = None,
-    ):
-        """Create new measurement 
-
-        Raises
-        ------
-        MeasurementError
-            if the only measurement is still running
-        """
-        if self._measurement._running:
+        if name and name == self._measurement._name and ndev-odev == set() and odev-ndev == set():
+            print("returning existing one")
+            return self._measurement
+        elif self._measurement._running:
             raise MeasurementError(
-                'Can\'t create new measurement because the old one is still running.'
+                'Can\'t create new measurement because the old one is still runing.'
             )
-
-        self._measurement = Measurement(self._devices, name)
-
-        return self._measurement
+        else:
+            self._measurement = Measurement(devices, name)
+            return self._measurement

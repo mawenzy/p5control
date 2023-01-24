@@ -42,8 +42,8 @@ class Measurement:
         self._devices = devices
 
         self._name = name if name else next(exp_name_generator)
-        self._name = f"{MEASUREMENT_BASE_PATH}/{self._name}"
-        logger.info(f'measurement with name "{self._name}"')
+        self._path = f"{MEASUREMENT_BASE_PATH}/{self._name}"
+        logger.info(f'measurement with name "{self._name}" and path "{self._path}"')
 
         # amount of devices
         cnt = len(self._devices)
@@ -75,7 +75,7 @@ class Measurement:
                     args=[self.STOP_EVENT, 
                           self.entry_barrier, 
                           self.exit_barrier,
-                          self._name],
+                          self._path],
                     )
             thread.start()
 
