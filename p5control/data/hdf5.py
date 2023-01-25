@@ -311,36 +311,12 @@ class HDF5FileInterface():
         else:
             return dset[field][()]
 
-    def values(
-        self,
-        path: str,
-    ):
-        return self._f[path].values()
-
-    def items(
-        self,
-        path: str,
-    ):
-        return self._f[path].items()
-
-    def keys(
-        self,
-        path: str,
-    ):
-        return self._f[path].keys()
-
     def get(
         self,
         path: str,
     ):
+        """Return an objecte from the hdf5 file, specified with path. Use this to
+        access its children or attributes. If you want to get data from a datset,
+        use ``get_dataset_slice`` or ``get_dataset_field``
+        """
         return self._f[path]
-
-    def shape(
-        self,
-        path: str,
-    ):
-        return self._f[path].shape
-
-    def get_file_handle(self):
-        """do not use!!! bad!!"""
-        return self._f

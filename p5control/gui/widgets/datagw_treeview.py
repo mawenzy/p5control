@@ -44,7 +44,7 @@ class DataGatewayTreeModel(QStandardItemModel):
         self.invisibleRootItem().setData("h5py.Group", Qt.UserRole+1)
 
         # top level nodes
-        for node in self.dgw.values("/"):
+        for node in self.dgw.get("/").values():
             parent = self.add_node(self, node)
 
             # add children if they are groups so they
@@ -143,7 +143,7 @@ class DataGatewayTreeModel(QStandardItemModel):
             new_items = []
 
             # iterate over children on data server
-            for name in self.dgw.keys(item_path):
+            for name in self.dgw.get(item_path).keys():
                 
                 # skip for children which already exist
                 if name in names:
