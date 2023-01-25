@@ -48,7 +48,7 @@ class DataGateway(BaseGateway):
         """
         return obtain(self._connection.root.get_data(path, indices, field))
 
-    def register_callback(self, path, func):
+    def register_callback(self, path, func, is_group: bool = False):
         """Wraps ``self._connection.root.register_callback`` to check whether callbacks are
         enabled.
         """
@@ -56,4 +56,4 @@ class DataGateway(BaseGateway):
             raise BaseGatewayError(
                 'Can\'t register callback, because callbacks are not enabled for the gateway')
 
-        return self._connection.root.register_callback(path, func)
+        return self._connection.root.register_callback(path, func, is_group)

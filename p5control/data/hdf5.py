@@ -108,6 +108,17 @@ class HDF5FileInterface():
         # set attribute
         dset.attrs["created_on"] = time.ctime()
 
+        # callbacks
+        with self._grp_callback_lock:
+            for (callid, (callpath, func)) in self._grp_callbacks.copy().items():
+                if path.startswith(callpath):
+                    try:
+                        logger.debug('calling group callback %s for %s', callid, path)
+                        func(path)
+                    except EOFError:
+                        logger.info('Can\'t connect to callback "%s", removing it.', callid)
+                        self._grp_callbacks.pop(callid)
+
         return dset
 
     def append(
@@ -246,7 +257,7 @@ class HDF5FileInterface():
                 return
 
         raise HDF5FileInterfaceError(
-            f'Can\'t remove callback with id "{id}" because non exists.'
+            f'Can\'t remove callback with id "{callid}" because non exists.'
         )
 
     def get_data(
