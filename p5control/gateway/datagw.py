@@ -11,6 +11,20 @@ from ..settings import DATASERV_DEFAULT_PORT
 logger = logging.getLogger(__name__)
 
 class DataGateway(BaseGateway):
+    """Gateway to the data server. Use this to add and retrieve data as well
+    as install callbacks.
+
+    Parameters
+    ----------
+    addr : str = 'localhost'
+        address of the data server
+    port : int = DATASERV_DEFAULT_PORT
+        port of the data server
+    conn_timeout : float = 0.0
+        how long to try to connect to the server, at least one try is made
+    allow_callback : bool = False
+        whether to allow registering of callbacks.
+    """
     def __init__(
         self,
         addr: str = 'localhost',
@@ -20,32 +34,26 @@ class DataGateway(BaseGateway):
     ):
         super().__init__(addr, port, conn_timeout, allow_callback)
 
-    def connect(self):
+    def connect(self, config=None):
         # we need to allow pickling for the transfer of numpy arrays
-        config={'allow_pickle': True}
+        if config:
+            config["allow_pickle"] = True
+        else:
+            config={'allow_pickle': True}
         super().connect(config=config)
 
-    def get_dataset(self, path):
-        #!!! use obtain with numpy arrays
-        return obtain(self._connection.root.get_dataset(path))
-
-    def get_dataset_slice(self, path, slice):
-        #!!! use obtain with numpy arrays
-        return obtain(self._connection.root.get_dataset_slice(path, slice))
-
-    def get_dataset_field(self, path, field, slice=None):
-        #!!! use obtain with numpy arrays
-        return obtain(self._connection.root.get_dataset_field(path, field, slice))
+    def get_data(self, path, indices: slice = (), field: str = None):
+        """Wraps ``self._conneciton.root.get_data`` to use ``obtain`` on the result
+        in order to transfer the data to a local object.
+        """
+        return obtain(self._connection.root.get_data(path, indices, field))
 
     def register_callback(self, path, func):
-        logger.info(f'register_callback("{path}", {func})')
-
+        """Wraps ``self._connection.root.register_callback`` to check whether callbacks are
+        enabled.
+        """
         if not self.allow_callback:
             raise BaseGatewayError(
-                f'Can\'t register callback, because callbacks are not enabled for the gateway')
+                'Can\'t register callback, because callbacks are not enabled for the gateway')
 
         return self._connection.root.register_callback(path, func)
-
-    def remove_callback(self, id):
-        logger.info(f'remove_callback("{id}")')
-        self._connection.root.remove_callback(id)

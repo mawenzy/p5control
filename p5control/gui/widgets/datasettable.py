@@ -127,14 +127,11 @@ class DatasetTableModel(QAbstractTableModel):
             if self.ndim <= 2:
                 # fill buffer
                 if self.data_buffer is None:
-                    self.data_buffer = self.dgw.get_dataset_slice(
-                        self.node.name,
-                        slice(0, 10)
-                    )
+                    self.data_buffer = self.dgw.get_data(self.node.name, slice(0, 10))
 
                 # extend buffer if new rows are requested
                 while row >= len(self.data_buffer):
-                    arr = self.dgw.get_dataset_slice(
+                    arr = self.dgw.get_data(
                         self.node.name,
                         slice(len(self.data_buffer), len(self.data_buffer) + 10)
                     )
@@ -148,7 +145,7 @@ class DatasetTableModel(QAbstractTableModel):
             else:
                 # fill buffer
                 if self.data_buffer is None:
-                    self.data_buffer = self.dgw.get_dataset_slice(
+                    self.data_buffer = self.dgw.get_data(
                         self.node.name,
                         self.dims
                     )
@@ -156,7 +153,7 @@ class DatasetTableModel(QAbstractTableModel):
                 # extend data_buffer buffer
                 while row >= len(self.data_buffer):
 
-                    arr = self.dgw.get_dataset_slice(
+                    arr = self.dgw.get_data(
                         self.node.name,
                         self.dims[:-2] + (slice(len(self.data_buffer), len(self.data_buffer) + 10), slice(None))
                     )
@@ -207,7 +204,7 @@ class DatasetTableModel(QAbstractTableModel):
 
         self.dims = tuple(self.dims)
         # self.data_view = self.node[self.dims]
-        self.data_view = self.dgw.get_dataset_slice(
+        self.data_view = self.dgw.get_data(
             self.node.name,
             self.dims
         )

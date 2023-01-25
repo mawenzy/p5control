@@ -29,7 +29,7 @@ This tells us that the root group contains a group with name `status`. This grou
 
 .. code-block:: py
 
-    >>> dgw.get_dataset_slice("status/inst1", slice(-5, None))
+    >>> dgw.get_data("status/inst1", slice(-5, None))
     array([[1.67283823e+09, 1.10000000e+00, 2.00000000e+00],
        [1.67283824e+09, 1.10000000e+00, 2.00000000e+00],
        [1.67283825e+09, 1.10000000e+00, 2.00000000e+00],

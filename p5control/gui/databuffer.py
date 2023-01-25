@@ -39,7 +39,7 @@ class DataBuffer:
 
         # try to get existing data
         try:
-            data = self.dgw.get_dataset_slice(path, slice(-self.max_length*self.down_sample, None, self.down_sample))
+            data = self.dgw.get_data(path, slice(-self.max_length*self.down_sample, None, self.down_sample))
             self.data = data
         except KeyError:
             pass
@@ -87,7 +87,7 @@ class DataBuffer:
         # because the dgw request can handle an incoming callback, which then also tries to lock,
         # which then does no longer work
         try:
-            data = self.dgw.get_dataset_slice(self.path, slice(-max_length*down_sample, None, down_sample))
+            data = self.dgw.get_data(self.path, slice(-max_length*down_sample, None, down_sample))
         except KeyError:
             return
 

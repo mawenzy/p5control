@@ -44,7 +44,7 @@ class MonitorValueBox(QDoubleSpinBox):
 
         # try getting already existing value
         try:
-            data = self.dgw.get_dataset_field(path, selector, slice(-1, None))[0]
+            data = self.dgw.get_data(path, slice(-1, None), selector)[0]
             self.setValue(data)
         except KeyError:
             # start with "--" before value is set 
