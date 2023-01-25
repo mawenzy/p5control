@@ -82,7 +82,6 @@ class HDF5FileInterface():
         arr: np.ndarray,
         maxshape: Tuple = None,
         chunks=True,
-        **kwargs
     ):
         """Create hdf5 dataset at the specified path with data arr.
 
@@ -99,8 +98,6 @@ class HDF5FileInterface():
             first axis infinitely extendable
         chunks :
             wheter to use chunks
-        **kwargs :
-            set as attributes of the dataset
         """
         if maxshape is None:
             # make first axis appendable
@@ -108,11 +105,8 @@ class HDF5FileInterface():
 
         dset = self._f.create_dataset(path, data=arr, maxshape=maxshape, chunks=chunks)
 
-        # set attributes
+        # set attribute
         dset.attrs["created_on"] = time.ctime()
-
-        for (key, value) in kwargs.items():
-            dset.attrs[key] = value
 
         return dset
 
