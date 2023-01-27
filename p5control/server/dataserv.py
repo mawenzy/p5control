@@ -33,14 +33,14 @@ class DataServer(BaseServer):
         if not filename:
             # generate new filename
             self._filename = next(new_filename_generator(DEFAULT_DATA_DIR.joinpath("session")))
-            logger.info(f'no filename provided, generated file {self._filename}')
+            logger.info(f'no filename provided, generated filename "%s"', self._filename)
 
             # make sure parent folder exitsts, if not create it
             Path(self._filename).parent.mkdir(parents=True, exist_ok=True)
         else:
             self._filename = filename
         
-        logger.info(f'DataServer using file {self._filename}')
+        logger.info(f'DataServer using file "%s"', self._filename)
 
         self._handler = None
 
@@ -77,6 +77,7 @@ class DataServer(BaseServer):
 
     def append(self, path, arr, **kwargs):
         # copy array to the local machine
+        logger.debug('obtaining array for path "%s"', path)
         arr = obtain(arr)
         
         return self._handler.append(path, arr, **kwargs)

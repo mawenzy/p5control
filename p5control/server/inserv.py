@@ -24,6 +24,7 @@ class InstrumentServer(BaseServer):
         data_server_port: int = DATASERV_DEFAULT_PORT,
         data_server_filename: str = None,
     ):
+        logger.debug('port %d, data port %d, data file %s', port, data_server_port, data_server_filename)
         super().__init__(port)
 
         self._devices: Dict[str, Any] = {}
@@ -74,10 +75,16 @@ class InstrumentServer(BaseServer):
         }
         self._devices[name] = (instance, config)
 
+        logger.debug(
+            'added instrument "%s" of class "%s"',
+            name, class_ref
+        )
+
     def _remove(
         self,
         name: str,
     ):
+        logger.debug('removing instrument "%s"', name)
         try:
             dev, _ = self._devices.pop(name)
         except Exception as exc:
@@ -93,6 +100,7 @@ class InstrumentServer(BaseServer):
         self,
         name: str
     ):
+        logger.debug('restarting instrument "%s"', name)
         config_dict = self._devices[name][1]
         class_ref = config_dict["class_ref"]
         args = config_dict["args"]
@@ -107,18 +115,18 @@ class InstrumentServer(BaseServer):
         """
 
         # start the RPyC server
-        logger.debug('start() starting instrument server')
+        logger.debug('starting instrument server')
         super().start()
 
         # Start the data server
-        logger.debug('start() starting data server')
+        logger.debug('starting data server')
         self._data_server = DataServer(
             self._data_server_port,
             filename=self._data_server_filename)
         self._data_server.start()
 
         # start status thread
-        logger.debug('start() starting StatusMeasurement')
+        logger.debug('starting StatusMeasurement')
         self._status_measurement = StatusMeasurement(self._devices)
         self._status_measurement.start()
 
@@ -130,28 +138,28 @@ class InstrumentServer(BaseServer):
         Order ist important, first stop the status thread so it does no longer 
         write data to the data server, then the data server can be stopped
         """
-        logger.debug('stop() called')
+        logger.debug('stopping instrument server and associated threads')
 
         # stop an ongoing measurement
         if self._measurement and self._measurement._running:
-            logger.debug('stop() stopping running measurement')
+            logger.debug('stopping running measurement')
             self._measurement.stop()
 
         # stop status thread
         if self._status_measurement:
-            logger.debug('stop() stopping status measurement thread')
+            logger.debug('stopping status measurement thread')
             self._status_measurement.stop()
             self._status_measurement = None
         else:
-            logger.debug('stop() no status measurement running, so nothing to stop')
+            logger.debug('no status measurement running, so nothing to stop')
 
         # stop the data server
         if self._data_server:
-            logger.debug('stop() stopping data server')
+            logger.debug('stopping data server')
             self._data_server.stop()
             self._data_server = None
         else:
-            logger.debug('stop() no data server running, so nothing to stop')
+            logger.debug('no data server running, so nothing to stop')
 
         # stop the RPyC server
         logger.debug('stopping instrument server')
@@ -191,6 +199,7 @@ class InstrumentServer(BaseServer):
             if include is not specified, this can be used to exclude some instruments, all
             others will be measured.
         """
+        logger.debug('"%s" with incl %s and excl %s', name, include, exclude)
         # get devices
         if include is not None:
             devices = {name: self._devices[name] for name in include}
@@ -211,7 +220,7 @@ class InstrumentServer(BaseServer):
         odev = set(self._measurement._devices.keys())
 
         if name and name == self._measurement._name and ndev-odev == set() and odev-ndev == set():
-            print("returning existing one")
+            logger.info("returning existing measurement.")
             return self._measurement
         elif self._measurement._running:
             raise MeasurementError(

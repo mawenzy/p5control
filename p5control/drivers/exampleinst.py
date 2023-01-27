@@ -39,7 +39,7 @@ class ExampleInst(BaseDriver):
     """
     def get_status(self):
         """Returns the current amplitude and frequency."""
-        logger.debug(f'{self._name}.get_status()')
+        logger.debug(f'{self._name}, ampl: {self._amplitude}, freq: {self._freq}')
         return {
             "ampl": self._amplitude,
             "freq": self._freq
