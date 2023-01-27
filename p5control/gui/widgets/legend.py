@@ -120,7 +120,7 @@ class LegendView(QListView):
 
         self.legend_model = LegendModel()
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.setMinimumWidth(100)
+        self.setMinimumWidth(50)
         self.setModel(self.legend_model)
 
         ## wrap functions from legend model

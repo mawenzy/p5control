@@ -13,13 +13,15 @@ import sys
 
 from qtpy.QtCore import (
     Qt,
-    QTimer
+    QTimer,
+    Slot
 )
 
 from qtpy.QtWidgets import (
     QMainWindow,
     QApplication,
     QDockWidget,
+    QTabWidget,
     QAction
 )
 
@@ -88,6 +90,16 @@ class Scheer2MainWindow(QMainWindow):
         # view menu
         self.view_menu = menu.addMenu('&View')
 
+        # plot menu
+        self.plot_menu = menu.addMenu('&Plot')
+
+        self.plot_menu.addAction(QAction(
+            "Add plot",
+            self,
+            statusTip='Add Tab with new plot',
+            triggered=self.handle_add_plot
+        ))
+
     def init_toolbars(self):
         """
         Initialize toolbars
@@ -107,11 +119,6 @@ class Scheer2MainWindow(QMainWindow):
         self.tree_view = DataGatewayTreeView(self.dgw)
         self.tree_view.expandAll()
 
-        # self.plot_view = CustomPlotWidget(self.dgw)
-        self.plot_view = DataGatewayPlot(self.dgw)
-
-        self.setCentralWidget(self.plot_view)
-
         self.form_view = ValueBoxForm(dgw, [
             ('inst1<sub>ampl</sub>', '/status/inst1', "ampl", gw.inst1.setAmplitude),
             ('inst1<sub>freq</sub>', '/status/inst1', "freq", gw.inst1.setFrequency),
@@ -119,6 +126,15 @@ class Scheer2MainWindow(QMainWindow):
         ])
 
         self.plot_form = PlotForm(self.dgw)
+
+        self.tabs = QTabWidget()
+
+        plot_view = DataGatewayPlot(self.dgw)
+        plot_view.connectPlotForm(self.plot_form)
+
+        self.tabs.addTab(plot_view, 'Plot 1')
+
+        self.setCentralWidget(self.tabs)
 
     def init_docks(self):
         """
@@ -153,16 +169,66 @@ class Scheer2MainWindow(QMainWindow):
         """
         Initialize signals
         """
-        self.tree_view.doubleClickedDataset.connect(self.plot_view.add_plot)
-        
-        self.plot_view.connectPlotForm(self.plot_form)
+        self.tree_view.doubleClickedDataset.connect(self.handle_tree_view_double_click)
+    
+        self.tabs.tabCloseRequested.connect(self.handle_tab_close)
+        self.tabs.currentChanged.connect(self.handle_tab_current_changed)
 
+    @Slot(str)
+    def handle_tree_view_double_click(self, path: str):
+        self.tabs.currentWidget().add_plot(path)
+
+    @Slot()
     def handle_refresh(self):
         self.tree_view.update_data()
 
-    def update(self):
-        self.plot_view.update()
+    @Slot()
+    def handle_add_plot(self):
+        """
+        Add a new plot in a tab. Makes them closable
+        """
+        plot_view = DataGatewayPlot(self.dgw)
+        plot_view.connectPlotForm(self.plot_form)
 
+        self.tabs.addTab(plot_view, f"Plot {self.tabs.count() + 1}")
+        self.tabs.setCurrentIndex(self.tabs.count() - 1)
+
+        self.tabs.setTabsClosable(True)
+
+    @Slot(int)
+    def handle_tab_close(self, index: int):
+        """
+        Close tab at index. If only one is remaining, makes it no longer closable
+        """
+        plot_view = self.tabs.widget(index)
+        self.tabs.removeTab(index)
+        plot_view.deleteLater()
+
+        if self.tabs.count() == 1:
+            self.tabs.setTabsClosable(False)
+
+        # rename plots
+        for i in range(self.tabs.count()):
+            self.tabs.setTabText(i, f"Plot {i + 1}")
+
+    @Slot(int)
+    def handle_tab_current_changed(self, index: int):
+        self.plot_form.clear()
+
+        # set plot_form to the config if one is selected
+        # in the legend
+        legend = self.tabs.currentWidget().legend
+        rows = legend.selectionModel().selectedRows()
+        
+        if len(rows) > 0:
+            index = rows[0]
+            item = legend.model().itemFromIndex(index)
+
+            itemid = item.data(Qt.UserRole)
+            legend.selected.emit(itemid)
+
+    def update(self):
+        self.tabs.currentWidget().update()
 
 
 if __name__ == '__main__':
