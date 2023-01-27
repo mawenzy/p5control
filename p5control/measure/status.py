@@ -83,7 +83,7 @@ class StatusMeasurement:
         refresh_delay: float = None,
     ):
         delay = refresh_delay if refresh_delay else self.refresh_delay
-        logger.info("_status_measurement_thread started")
+        logger.info("thread started")
 
         dgw = DataGateway()
         dgw.connect()
@@ -124,16 +124,17 @@ class StatusMeasurement:
             """try reconnecting if connection is down"""
             if not dgw._connection:
                 try:
-                    logger.info('connection to data server down, retrying...')
+                    logger.debug('connection to data server down, retrying...')
                     # blocks for 2 second and the fails if it fails to establish a connection
                     dgw.connect()
                 except BaseGatewayError:
                     # server is still down, just keep caching...
-                    logger.info('failed to reestablish connection to the data server')
+                    logger.debug('failed to reestablish connection to the data server')
                     continue
 
             """sending data"""
             if dgw._connection:
+                logger.debug('pushing data to the data server')
                 for name in list(data_cache.keys()):
                     try:
                         dgw.append(
@@ -144,15 +145,16 @@ class StatusMeasurement:
                         data_cache.pop(name)
 
                     except BaseGatewayError:
-                        logger.info('connection to data server lost, continuuing caching')
+                        logger.debug('connection to data server lost, continuing caching')
                         # connection might be down and reconnect has timed out
                         # in this case we just continue and cache the data
                         break
 
+        logger.info('stopping, disconnecting from data server.')
         dgw.disconnect()
 
         # reset stop flag
         stop_event.clear()
 
-        logger.info("_status_thread ended, setting event")
+        logger.info("stopped, setting event")
         self.STATUS_THREAD_STOP_EVENT.set()

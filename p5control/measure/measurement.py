@@ -83,7 +83,7 @@ class Measurement:
         logger.info('All threads started, waiting at entry_barrier.')
         self.entry_barrier.wait()
         self._running = True
-        logger.info('Passed entry_barrier.')
+        logger.info('Passed entry_barrier, measurement is running.')
 
     def stop(self):
         """Stop all measurements threads. Blocks until all are finished."""
