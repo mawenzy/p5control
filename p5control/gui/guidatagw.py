@@ -9,6 +9,28 @@ from qtpy.QtWidgets import QMessageBox
 
 from ..gateway import DataGateway
 
+def get_object(obj, attr):
+    try:
+        res = getattr(obj, attr)
+
+        if isinstance(res, BaseNetref):
+            return WrapNetref(res)
+        return res
+    except Exception as e:
+        print(f"exc {type(e)} caught: {e}")
+        raise
+
+def get_object_call(obj, attr):
+    try:
+        res = getattr(obj, attr)()
+
+        if isinstance(res, BaseNetref):
+            return WrapNetref(res)
+        return res
+    except Exception as e:
+        print(f"exc {type(e)} caught: {e}")
+        raise
+
 class WrapNetref():
     def __init__(self, netref) -> None:
         self._secret_netref = netref
@@ -31,38 +53,17 @@ class WrapNetref():
         self,
         attr: str
     ):
-        # print(f"__getattr__ {attr}")
-        try:
-            res = getattr(self._secret_netref, attr)
-
-            if isinstance(res, BaseNetref):
-                return WrapNetref(res)
-            return res
-        except Exception as e:
-            print(f"__getattr__ {attr} exc {type(e)} caught: {e}")
-            raise
+        return get_object(self._secret_netref, attr)
 
     def __iter__(self):
-        res = getattr(self._secret_netref, '__iter__')()
-        # print(f"WrapNetref iter res {res}, {type(res)}")
-
-        if isinstance(res, BaseNetref):
-            return WrapNetref(res)
-        return res
+        return get_object_call(self._secret_netref, '__iter__')
 
     def __next__(self):
-        res = getattr(self._secret_netref, '__next__')()
-        # print(f"WrapNetref next res {res}, {type(res)}")
-
-        if isinstance(res, BaseNetref):
-            return WrapNetref(res)
-        return res
+        return get_object_call(self._secret_netref, '__next__')
 
     @property
     def __class__(self):
-        print("getting class")
-        res = getattr(self._secret_netref, '__class__')
-        return res
+        return get_object(self._secret_netref, '__class__')
 
 
 class GuiDataGateway(DataGateway):

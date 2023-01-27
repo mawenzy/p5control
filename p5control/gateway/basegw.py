@@ -62,7 +62,7 @@ class BaseGateway:
 
                 if self.allow_callback:
                     logger.debug('starting BgServingThread')
-                    self._bgsrv = rpyc.BgServingThread(self._connection)
+                    self._bgsrv = rpyc.BgServingThread(self._connection, callback=lambda: print("bg thread closed"))
 
             except OSError as exc:
                 logger.debug(
@@ -86,7 +86,7 @@ class BaseGateway:
         self._connection.close()
         self._connection = None
 
-        if self._bgsrv:
+        if self._bgsrv and self._bgsrv._active:
             self._bgsrv.stop()
             self._bgsrv = None
 
