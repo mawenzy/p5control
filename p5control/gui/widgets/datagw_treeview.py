@@ -242,7 +242,7 @@ class DataGatewayTreeView(QTreeView):
         dgw,
         *args, 
         dragEnabled=True,
-        customContextMenu=True,
+        customContextMenu=False,
         **kwargs
     ):
         super().__init__(*args, **kwargs)
@@ -291,7 +291,11 @@ class DataGatewayTreeView(QTreeView):
             plot_action = QAction("plot")
             plot_action.triggered.connect(lambda: print(f"plot {item_path}"))
 
+            new_plot_action = QAction("plot in new tab")
+            new_plot_action.triggered.connect(lambda: print(f"plot in new tab {item_path}"))
+
             menu.addAction(plot_action)
+            menu.addAction(new_plot_action)
             menu.exec(self.viewport().mapToGlobal(point))
 
     @Slot(QModelIndex)
