@@ -91,7 +91,7 @@ class DataServer(BaseServer):
         try:
             return getattr(self._handler, attr)
         except AttributeError:
-            # let default pytho implementation handle all other cases
+            # let default python implementation handle all other cases
             return self.__getattribute__(attr)
 
 

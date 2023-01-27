@@ -1,10 +1,13 @@
 import threading
+import logging
 
 import numpy as np
 from rpyc.utils.classic import obtain
 
 from ..gateway import DataGateway
 from .guisettings import DATA_BUFFER_MAX_LENGTH, DOWN_SAMPLE
+
+logger = logging.getLogger(__name__)
 
 class DataBuffer:
     """DataBuffer which subscribes to a path on the dataserver and buffers
@@ -49,6 +52,7 @@ class DataBuffer:
     def callback(self, arr):
         """Callback which extends the array and deletes starting values
         if is gets too long."""
+        logger.debug('path "%s"', self.path)
         with self.data_lock:
             arr = obtain(arr)
             if self.down_sample > 1:
@@ -87,6 +91,7 @@ class DataBuffer:
         # because the dgw request can handle an incoming callback, which then also tries to lock,
         # which then does no longer work
         try:
+            logger.debug('requesting data')
             data = self.dgw.get_data(self.path, slice(-max_length*down_sample, None, down_sample))
         except KeyError:
             return

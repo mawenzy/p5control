@@ -5,7 +5,7 @@ logging.basicConfig(
     filename='scheer2.log',
     level=logging.DEBUG,
     filemode='w', # overwrites logs every time this script is started
-    format='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s',
+    format='%(asctime)s.%(msecs)03d %(levelname)-8s %(thread)6d %(name)-30s %(funcName)-20s %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
 )
 

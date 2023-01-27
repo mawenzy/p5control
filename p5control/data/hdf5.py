@@ -207,7 +207,7 @@ class HDF5FileInterface():
             for (callid, (callpath, func)) in self._dset_callbacks.copy().items():
                 if callpath == path:
                     try:
-                        logger.debug('calling callback %s for %s', callid, path)
+                        logger.debug('calling callback "%s" for "%s"', callid, path)
                         #TODO: as this code stands, if a dict comes in, at this
                         # point arr is no longer a dict but converted to a
                         # compound array, is this intentional???
