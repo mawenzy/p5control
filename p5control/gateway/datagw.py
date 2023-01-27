@@ -46,6 +46,7 @@ class DataGateway(BaseGateway):
         """Wraps ``self._conneciton.root.get_data`` to use ``obtain`` on the result
         in order to transfer the data to a local object.
         """
+        logger.debug('obtaining result for "%s", %s, %s', path, indices, field)
         return obtain(self._connection.root.get_data(path, indices, field))
 
     def register_callback(self, path, func, is_group: bool = False):
@@ -56,4 +57,5 @@ class DataGateway(BaseGateway):
             raise BaseGatewayError(
                 'Can\'t register callback, because callbacks are not enabled for the gateway')
 
+        logger.debug('"%s", %s, %s', path, func, is_group)
         return self._connection.root.register_callback(path, func, is_group)

@@ -61,12 +61,13 @@ class BaseGateway:
                     )
 
                 if self.allow_callback:
+                    logger.debug('starting BgServingThread')
                     self._bgsrv = rpyc.BgServingThread(self._connection)
 
             except OSError as exc:
-
                 logger.debug(
-                    f'Gateway couldn\'t connect to server at "{self.addr}:{self.port}" - retrying...'
+                    'Gateway couldn\'t connect to server at "%s":%s - retrying...',
+                    self.addr, self.port
                 )
 
                 if time.time() > timeout:
@@ -77,7 +78,7 @@ class BaseGateway:
                 # limit the retrying rate
                 time.sleep(0.5)
             else:
-                logger.info(f'Gateway connected to server at "{self.addr}:{self.port}"')
+                logger.info('Gateway connected to server at "%s":%s', self.addr, self.port)
                 break 
 
     def disconnect(self):
@@ -89,10 +90,11 @@ class BaseGateway:
             self._bgsrv.stop()
             self._bgsrv = None
 
-        logger.info(f'Gateway disconnected from server at {self.addr}:{self.port}')
+        logger.info('Gateway disconnected from server at "%s":%s', self.addr, self.port)
 
     def reconnect(self):
         """Reconnect to the server"""
+        logger.info('reconnecting to "%s":%s', self.addr, self.port)
         self.disconnect()
         self.connect()
 
