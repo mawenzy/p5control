@@ -24,6 +24,7 @@ def get_callback_id():
     """Thread save id generator for unique callback ids."""
     with id_generator_lock:
         newid = next(id_generator)
+    logger.debug('generated id "%s"', newid)
     return newid
 
 class HDF5FileInterfaceError(Exception):
@@ -43,6 +44,7 @@ class HDF5FileInterface():
         self,
         filename: str,
     ):
+        logger.debug('filename "%s"', filename)
         self._filename = filename
 
         self._f = None
@@ -64,7 +66,7 @@ class HDF5FileInterface():
         if self._f:
             raise Exception("Can't open h5py.File because it is already open")
 
-        logger.info('opening file %s', self._filename)
+        logger.info('opening file "%s" in mode "a"', self._filename)
         self._f = h5py.File(self._filename, "a", libver="latest")
 
     def close(self):
@@ -72,7 +74,18 @@ class HDF5FileInterface():
         if not self._f:
             raise Exception("Can't close h5py.File because there is none open")
 
-        logger.info('closing file %s', self._filename)
+        # removing callbacks
+        logger.debug('removing all dataset callbacks')
+        with self._dset_callback_lock:
+            for key in self._dset_callbacks.copy():
+                self._dset_callbacks.pop(key)
+
+        logger.debug('removing all group callbacks')
+        with self._grp_callback_lock:
+            for key in self._grp_callbacks.copy():
+                self._grp_callbacks.pop()
+
+        logger.info('closing file "%s"', self._filename)
         self._f.close()
         self._f = None
 
@@ -103,9 +116,11 @@ class HDF5FileInterface():
             # make first axis appendable
             maxshape = (None,) + arr.shape[1:]
 
+        logger.debug('creating dataset "%s" with maxshape %s and dtype %s', path, maxshape, arr.dtype)
         dset = self._f.create_dataset(path, data=arr, maxshape=maxshape, chunks=chunks)
-
+        
         # set attribute
+        logger.debug('attribute for "%s", "created_on"', path)
         dset.attrs["created_on"] = time.ctime()
 
         # callbacks
@@ -113,7 +128,7 @@ class HDF5FileInterface():
             for (callid, (callpath, func)) in self._grp_callbacks.copy().items():
                 if path.startswith(callpath):
                     try:
-                        logger.debug('calling group callback %s for %s', callid, path)
+                        logger.debug('calling group callback "%s" for "%s"', callid, path)
                         func(path)
                     except EOFError:
                         logger.info('Can\'t connect to callback "%s", removing it.', callid)
@@ -161,6 +176,7 @@ class HDF5FileInterface():
                         dtype = dset.dtype
                     )
 
+                logger.debug('appending data to "%s"', path)
                 dset.resize(dset.shape[0] + arr.shape[0], axis=0)
                 dset[-arr.shape[0]:] = arr
 
@@ -183,6 +199,7 @@ class HDF5FileInterface():
 
         # set attributes
         for (key, value) in kwargs.items():
+            logger.info('attribute for "%s", "%s" : %s', path, key, value)
             dset.attrs[key] = value
 
         # callbacks
@@ -299,6 +316,8 @@ class HDF5FileInterface():
                 f'hdf5 object at path "{path}" is not a Dataset'
             )
 
+        logger.debug('dataset "%s", field: %s, indices %s', path, field, indices)
+
         if field:
             return dset[field][indices]
 
@@ -312,4 +331,5 @@ class HDF5FileInterface():
         access its children or attributes. If you want to get data from a datset,
         use :meth:`get_data`
         """
+        logger.debug('path "%s"', path)
         return self._f[path]
