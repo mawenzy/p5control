@@ -82,6 +82,10 @@ class DataServer(BaseServer):
         
         return self._handler.append(path, arr, **kwargs)
 
+    @property
+    def filename(self):
+        return self._filename
+
     def __getattr__(
         self,
         attr: str,
