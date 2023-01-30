@@ -104,51 +104,24 @@ class StatusMeasurement:
                 except NotImplementedError:
                     continue
 
-                # save data to cache  
-                if name in data_cache:
-                    if isinstance(res, dict):
-                        for k, v in res.items():
-                            data_cache[name][k].append(v)
-                        data_cache[name]["time"].append(time.time())
-                    else:
-                        data_cache[name] = np.concatenate((
-                            data_cache[name], 
-                            np.concatenate(([[time.time()]], res), axis=1)))
-                else:
-                    if isinstance(res, dict):
-                        data_cache[name] = {k: [v] for k,v in res.items()}
-                        data_cache[name]["time"] = [time.time()]
-                    else:
-                        data_cache[name] = np.concatenate(([[time.time()]], res), axis=1)
-
-            """try reconnecting if connection is down"""
-            if not dgw._connection:
-                try:
-                    logger.debug('connection to data server down, retrying...')
-                    # blocks for 2 second and the fails if it fails to establish a connection
-                    dgw.connect()
-                except BaseGatewayError:
-                    # server is still down, just keep caching...
-                    logger.debug('failed to reestablish connection to the data server')
+                # skip emtpy data
+                if isinstance(res, dict) and len(res) == 0:
                     continue
 
-            """sending data"""
-            if dgw._connection:
-                logger.debug('pushing data to the data server')
-                for name in list(data_cache.keys()):
-                    try:
-                        dgw.append(
-                            f"{STATUS_MEASUREMENT_BASE_PATH}/{name}",
-                            data_cache[name]
-                        )
-                        # data has been send, can delete it from cache
-                        data_cache.pop(name)
+                # append time stamp
+                if isinstance(res, dict):
+                    res = {k: [v] for k,v in res.items()}
+                    res["time"] = [time.time()]
+                else:
+                    res = np.concatenate(([[time.time()]], res), axis=1)
 
-                    except BaseGatewayError:
-                        logger.debug('connection to data server lost, continuing caching')
-                        # connection might be down and reconnect has timed out
-                        # in this case we just continue and cache the data
-                        break
+                if hasattr(dev, '_save_status'):
+                    dev._save_status(f"{STATUS_MEASUREMENT_BASE_PATH}/{name}", res, dgw)
+                else:
+                    dgw.append(
+                        f"{STATUS_MEASUREMENT_BASE_PATH}/{name}",
+                        res
+                    )
 
         logger.info('stopping, disconnecting from data server.')
         dgw.disconnect()

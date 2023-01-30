@@ -171,10 +171,13 @@ class HDF5FileInterface():
                 if isinstance(arr, dict):
                     # convert dict to compound type array, making sure to use the
                     # same tuple ordering as in dset
-                    arr = np.fromiter(
-                        zip(*[arr[k] for k in dset.dtype.names]),
-                        dtype = dset.dtype
-                    )
+                    try:
+                        arr = np.fromiter(
+                            zip(*[arr[k] for k in dset.dtype.names]),
+                            dtype = dset.dtype
+                        )
+                    except KeyError:
+                        raise Exception('break!!!')
 
                 logger.debug('appending data to "%s"', path)
                 dset.resize(dset.shape[0] + arr.shape[0], axis=0)
