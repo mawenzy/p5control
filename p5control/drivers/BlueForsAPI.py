@@ -17,6 +17,10 @@ class BlueForsAPI(BaseDriver):
         self._latest_T50K = 0
         self._latest_T4K = 0
         self._latest_Tmagnet = 0
+        self._latest_Tstill = 0
+        self._latest_Tmxc = 0
+        self._latest_Tfmr = 0
+        self._latest_Tmcbj = 0
 
     """
     Response
@@ -36,16 +40,6 @@ class BlueForsAPI(BaseDriver):
     def get_status(self):
         data = self.get_response()
         status = {}
-
-        # Thermometers
-        # 1. 50K
-        # 2. 4K
-        # 3. Magnet
-        # 4. --
-        # 5. Still
-        # 6. MXC
-        # 7. FMR
-        # 8. MCBJ
 
         # 50K Thermometer
         T50K = data['data']['driver.lakeshore.status.inputs.channel1.temperature']['content']['latest_value']
@@ -67,6 +61,34 @@ class BlueForsAPI(BaseDriver):
         if date!=self._latest_Tmagnet:
             self._latest_Tmagnet = date
             status['Tmagnet'] = {'time': [date], 'T': [float(Tmagnet['value'])]}
+
+        # Still Thermometer
+        Tstill = data['data']['driver.lakeshore.status.inputs.channel5.temperature']['content']['latest_value']
+        date = Tstill['date']/1000.0
+        if date!=self._latest_Tstill:
+            self._latest_Tstill = date
+            status['Tstill'] = {'time': [date], 'T': [float(Tstill['value'])]}
+            
+        # MXC Thermometer
+        Tmxc = data['data']['driver.lakeshore.status.inputs.channel6.temperature']['content']['latest_value']
+        date = Tmxc['date']/1000.0
+        if date!=self._latest_Tmxc:
+            self._latest_Tmxc = date
+            status['Tmxc'] = {'time': [date], 'T': [float(Tmxc['value'])]}
+            
+        # FMR Thermometer
+        Tfmr = data['data']['driver.lakeshore.status.inputs.channel7.temperature']['content']['latest_value']
+        date = Tfmr['date']/1000.0
+        if date!=self._latest_Tfmr:
+            self._latest_Tfmr = date
+            status['Tfmr'] = {'time': [date], 'T': [float(Tfmr['value'])]}
+            
+        # MCBJ Thermometer
+        Tmcbj = data['data']['driver.lakeshore.status.inputs.channel8.temperature']['content']['latest_value']
+        date = Tmcbj['date']/1000.0
+        if date!=self._latest_Tmcbj:
+            self._latest_Tmcbj = date
+            status['Tmcbj'] = {'time': [date], 'T': [float(Tmcbj['value'])]}
         
         logger.debug(f'{self._name}.get_status()')
         return status
@@ -82,4 +104,12 @@ class BlueForsAPI(BaseDriver):
         if 'T4K' in status:
             dgw.append(f"{hdf5_path}/temperatures/4K", status['T4K'])
         if 'Tmagnet' in status:
-            dgw.append(f"{hdf5_path}/temperatures/magnet", status['Tmagnet'])
+            dgw.append(f"{hdf5_path}/temperatures/Magnet", status['Tmagnet'])
+        if 'Tstill' in status:
+            dgw.append(f"{hdf5_path}/temperatures/Still", status['Tstill'])
+        if 'Tmxc' in status:
+            dgw.append(f"{hdf5_path}/temperatures/MXC", status['Tmxc'])
+        if 'Tfmr' in status:
+            dgw.append(f"{hdf5_path}/temperatures/FMR", status['Tfmr'])
+        if 'Tmcbj' in status:
+            dgw.append(f"{hdf5_path}/temperatures/MCBJ", status['Tmcbj'])
