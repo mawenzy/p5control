@@ -146,6 +146,7 @@ class GuiDataGateway(DataGateway):
         attributes of any netref in a gui application.
         """
         try:
+            logger.debug("safe %s, '%s'", str(obj), attr)
             res = getattr(obj, attr)
 
             if attr in ['__iter__', '__next__']:
@@ -171,14 +172,14 @@ class GuiDataGateway(DataGateway):
 
                     # try operation again, if it fails again, return to retrying
                     try:
-                        logger.debug('retrying obj: %s, attr: "%s"', obj, attr)
-
                         if isinstance(obj, Connection):
                             # if obj refers to the old connection, we need to obtain the new
                             # one through ``self._connection`` and get the attribute through
                             # that, because the old connection is closed at this point.
+                            logger.debug('retrying obj: %s, attr: "%s"', self._connection, attr)
                             res = getattr(self._connection, attr)
                         else:
+                            logger.debug('retrying obj: %s, attr: "%s"', str(obj), attr)
                             res = getattr(obj, attr)
 
                         if attr in ['__iter__', '__next__']:
@@ -300,7 +301,7 @@ class GuiDataGateway(DataGateway):
         logger.debug('"%s", %s, %s', path, func, is_group)
 
         root = self.network_safe_getattr(self._connection, 'root')
-        f = self.network_safe_getattr(root, 'get_data')
+        f = self.network_safe_getattr(root, 'register_callback')
         res = f(path, func, is_group)
 
         return res

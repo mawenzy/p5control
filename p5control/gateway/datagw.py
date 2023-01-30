@@ -43,7 +43,7 @@ class DataGateway(BaseGateway):
         super().connect(config=config)
 
     def get_data(self, path, indices: slice = (), field: str = None):
-        """Wraps ``self._conneciton.root.get_data`` to use ``obtain`` on the result
+        """Wraps ``self._connection.root.get_data`` to use ``obtain`` on the result
         in order to transfer the data to a local object.
         """
         logger.debug('obtaining result for "%s", %s, %s', path, indices, field)

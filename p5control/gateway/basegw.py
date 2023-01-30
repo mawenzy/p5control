@@ -14,6 +14,22 @@ class BaseGatewayError(Exception):
     """Raised for failures related to the BaseGateway."""
 
 class BaseGateway:
+    """
+    Base class for a connection to an rpyc server.
+
+    Parameters
+    ----------
+    addr : str = 'localhost'
+        address of the server
+    port : inst = INSERV_DEFAULT_PORT
+        port of the server
+    conn_timeout: float = 0.0
+        how long to try to connect to the server before raising an exception
+    allow_callback: bool = False
+        whether callbacks are allowed. If True, starts `rpyc.BgServingThread` to handle
+        incoming callbacks
+    """
+
     def __init__(
         self,
         addr: str = 'localhost',
@@ -21,24 +37,26 @@ class BaseGateway:
         conn_timeout: float = 0.0,
         allow_callback: bool = False,
     ):
-        """
-        Args:
-            addr: Network address of the instrument server.
-            port: Port number of the instrument server
-            connt_timeout: time to wait for the connection to be established
-        """
         self.addr = addr
         self.port = port
         self.conn_timeout = conn_timeout
-        
+
         self._connection = None
 
         self.allow_callback = allow_callback
         self._bgsrv = None
 
-    def connect(self, config=None):
-        """Attempt connection to an InstrumentServer.
-        
+    def connect(
+        self,
+        config=None
+    ):
+        """Attempt connection to the rpyc server.
+
+        Parameters
+        ----------
+        config : dict = None
+            can be used to configure the connection to the rpyc server.
+
         Raises
         ------
         BaseGatewayError
@@ -54,7 +72,7 @@ class BaseGateway:
                         self.port,
                         config=config,
                     )
-                else:    
+                else:
                     self._connection = rpyc.connect(
                         self.addr,
                         self.port,
@@ -62,7 +80,10 @@ class BaseGateway:
 
                 if self.allow_callback:
                     logger.debug('starting BgServingThread')
-                    self._bgsrv = rpyc.BgServingThread(self._connection, callback=lambda: print("bg thread closed"))
+                    self._bgsrv = rpyc.BgServingThread(
+                        self._connection,
+                        callback=lambda: print("bg stopped")
+                    )
 
             except OSError as exc:
                 logger.debug(
@@ -74,12 +95,12 @@ class BaseGateway:
                     raise BaseGatewayError(
                         f'Failed to connect to server at "{self.addr}:{self.port}"'
                     ) from exc
-                
+
                 # limit the retrying rate
                 time.sleep(0.5)
             else:
                 logger.info('Gateway connected to server at "%s":%s', self.addr, self.port)
-                break 
+                break
 
     def disconnect(self):
         """Disconnect form the server"""
@@ -89,7 +110,7 @@ class BaseGateway:
 
             logger.info('Gateway disconnected from server at "%s":%s', self.addr, self.port)
 
-        if self._bgsrv and self._bgsrv._active:
+        if self._bgsrv and self._bgsrv._active: # pylint: disable=protected-access
             self._bgsrv.stop()
             self._bgsrv = None
 
@@ -101,6 +122,7 @@ class BaseGateway:
 
     @property
     def connected(self):
+        """Pings the connection and returns True if connected to the server."""
         if self._connection:
             try:
                 self._connection.ping()
@@ -129,8 +151,5 @@ class BaseGateway:
                 # the server might have disconnected - try reconnecting
                 self.reconnect()
                 return getattr(self._connection.root, attr)
-        else:
-            # default python implementation
-            self.__getattribute__(attr)
-
-            
+        # default python implementation
+        return self.__getattribute__(attr)
