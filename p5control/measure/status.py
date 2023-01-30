@@ -31,7 +31,7 @@ class StatusMeasurement:
     def __init__(
         self,
         devices: Dict[str, Any],
-        refresh_delay: float = 10,
+        refresh_delay: float = 1,
     ):
         self._devices = devices
         self.refresh_delay = refresh_delay
@@ -108,6 +108,10 @@ class StatusMeasurement:
                 if isinstance(res, dict) and len(res) == 0:
                     continue
 
+                if hasattr(dev, '_save_status'):
+                    dev._save_status(f"{STATUS_MEASUREMENT_BASE_PATH}/{name}", res, dgw)
+                    continue
+
                 # append time stamp
                 if isinstance(res, dict):
                     res = {k: [v] for k,v in res.items()}
@@ -115,13 +119,10 @@ class StatusMeasurement:
                 else:
                     res = np.concatenate(([[time.time()]], res), axis=1)
 
-                if hasattr(dev, '_save_status'):
-                    dev._save_status(f"{STATUS_MEASUREMENT_BASE_PATH}/{name}", res, dgw)
-                else:
-                    dgw.append(
-                        f"{STATUS_MEASUREMENT_BASE_PATH}/{name}",
-                        res
-                    )
+                dgw.append(
+                    f"{STATUS_MEASUREMENT_BASE_PATH}/{name}",
+                    res
+                )
 
         logger.info('stopping, disconnecting from data server.')
         dgw.disconnect()
