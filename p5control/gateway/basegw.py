@@ -83,14 +83,15 @@ class BaseGateway:
 
     def disconnect(self):
         """Disconnect form the server"""
-        self._connection.close()
-        self._connection = None
+        if self._connection:
+            self._connection.close()
+            self._connection = None
+
+            logger.info('Gateway disconnected from server at "%s":%s', self.addr, self.port)
 
         if self._bgsrv and self._bgsrv._active:
             self._bgsrv.stop()
             self._bgsrv = None
-
-        logger.info('Gateway disconnected from server at "%s":%s', self.addr, self.port)
 
     def reconnect(self):
         """Reconnect to the server"""
