@@ -1,8 +1,13 @@
 """
-Wrap DataGateway to open Dialog if Connection errors occur, such that
-the gui can assume the dataserver to always answer
+This file defines :class:`GuiDataGateway` which extends
+:class:`p5control.gateway.datagw.DataGateway` by opening a dialog if an connection error occurs.
+This informs the user about the error and lets him handle the problem while the gui if paused,
+such that it will not get into a broken state.
+
+Since ``rpyc`` often only returns :class:`BaseNetref`, which send and receive data if e.g.
+attributes are accessed, we define the class :class:`WrapNetref` to wrap these and catch
+connection errors which might arise.
 """
-import time
 import logging
 import sys
 import pickle
@@ -10,6 +15,7 @@ from typing import Any
 
 from rpyc.utils.classic import obtain
 from rpyc.core.netref import BaseNetref
+from rpyc.core.protocol import Connection
 from qtpy.QtWidgets import QMessageBox, QSpacerItem
 
 from ..gateway import DataGateway
@@ -19,15 +25,23 @@ from ..settings import DATASERV_DEFAULT_PORT
 logger = logging.getLogger(__name__)
 
 class WrapNetref():
-    """Wrap netref"""
+    """
+    Wraps rpyc netref such that all requests made are handled in try catch expressions
+    and a prompt is opened if the connection is closed.
+
+    This class may not implement all necessary behavior, implemented:
+
+        - iteration
+        - class is the one behind the netref
+        - netref can be pickled
+    """
     def __init__(self, netref, dgw) -> None:
-        logger.debug("wrapping %s", str(netref))
         self._secret_netref = netref
-        self._secret_class = dgw.network_safe_getattr(netref, '__class__')
+        self._secret_type = type(netref)
         self.dgw = dgw
 
     def __str__(self) -> str:
-        return f"<WrapNetref wrapping {self._secret_class}>"
+        return f"<WrapNetref wrapping {self._secret_type}>"
 
     def __call__(self, *args, **kwargs):
         logger.debug('Calling %s with args %s and kwargs %s',
@@ -68,6 +82,16 @@ class WrapNetref():
         attr: str
     ):
         return self.dgw.network_safe_getattr(self._secret_netref, attr)
+
+    def __iter__(self):
+        return self.dgw.network_safe_getattr(self._secret_netref, '__iter__')
+
+    def __next__(self):
+        return self.dgw.network_safe_getattr(self._secret_netref, '__next__')
+
+    @property
+    def __class__(self):
+        return self.dgw.network_safe_getattr(self._secret_netref, '__class__')
 
     def __reduce__(self):
         """Allow for pickling of the wrapped netref."""
@@ -118,9 +142,9 @@ class GuiDataGateway(DataGateway):
     ):
         """
         Tries ``getattr(obj, attr)`` and handles any connection problems, assures that
-        the object is returned or the application is closed.
+        the object is returned or the application is closed. Use this method to access
+        attributes of any netref in a gui application.
         """
-        logger.debug('safe getattr, obj: %s, attr: "%s"', str(obj), attr)
         try:
             res = getattr(obj, attr)
 
@@ -148,7 +172,14 @@ class GuiDataGateway(DataGateway):
                     # try operation again, if it fails again, return to retrying
                     try:
                         logger.debug('retrying obj: %s, attr: "%s"', obj, attr)
-                        res = getattr(obj, attr)
+
+                        if isinstance(obj, Connection):
+                            # if obj refers to the old connection, we need to obtain the new
+                            # one through ``self._connection`` and get the attribute through
+                            # that, because the old connection is closed at this point.
+                            res = getattr(self._connection, attr)
+                        else:
+                            res = getattr(obj, attr)
 
                         if attr in ['__iter__', '__next__']:
                             res = res()
@@ -167,14 +198,22 @@ class GuiDataGateway(DataGateway):
         error: Exception,
         filename: str
     ):
-        """blocks until the gateway is connected again, to a data server
-        which serves the same hdf5 file as to one connection was lost to.
+        """
+        Blocks until the gateway is connected again, to a data server which serves the same hdf5
+        file as to one connection was lost to. Any connection with a different hdf5 file is
+        rejected because it might not have the same content. The gui probably has loaded some
+        references to this content and will break. Thus the connection is closed and the user
+        is asked to host the old file again.
+
+        Parameters
+        ----------
+        error : Exception
+            the error which made reconnecting necessary
+        filename : str
+            the hdf5 file the data server needs to host to be an accepted connection.
         """
         while not self.connected:
-            # btn = self.message_reconnect(error, filename).exec()
-            btn = QMessageBox.Retry
-            
-            time.sleep(0.5)
+            btn = self.message_reconnect(error, filename).exec()
 
             if btn == QMessageBox.Abort:
                 sys.exit()
@@ -196,7 +235,6 @@ class GuiDataGateway(DataGateway):
 
                 except (BaseGatewayError, GuiDataGatewayError) as newerror:
                     error = newerror
-        print("reconnect returning...")
 
     def message_reconnect(
         self,
@@ -212,7 +250,7 @@ class GuiDataGateway(DataGateway):
         error: Exception
             the exception which led to the message box to be shown
         filename: str
-            the hdf5 file the old dataserver used
+            the hdf5 file the data server needs to host to be an accepted connection.
         """
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Critical)
@@ -237,7 +275,10 @@ class GuiDataGateway(DataGateway):
         return msg
 
     def get_data(self, path, indices: slice = (), field: str = None):
-        """Overwrite get_data to include gui error handling."""
+        """
+        Overwrite :meth:`p5control.gateway.datagw.DataGateway.get_data`
+        to include gui error handling.
+        """
         logger.debug('"%s", %s, %s', path, indices, field)
 
         root = self.network_safe_getattr(self._connection, 'root')
@@ -247,7 +288,10 @@ class GuiDataGateway(DataGateway):
         return obtain(res)
 
     def register_callback(self, path, func, is_group: bool = False):
-        """Overwrite register_callback to include gui error handling."""
+        """
+        Overwrite :meth:`p5control.gateway.datagw.DataGateway.register_callback
+        to include gui error handling.
+        """
         if not self.allow_callback:
             raise BaseGatewayError(
                 'Can\'t register callback, because callbacks are not enabled for the gateway.'
