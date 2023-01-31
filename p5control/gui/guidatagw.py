@@ -30,7 +30,6 @@ class WrapNetref():
     and a prompt is opened if the connection is closed.
 
     This class may not implement all necessary behavior, implemented:
-
         - iteration
         - class is the one behind the netref
         - netref can be pickled
@@ -107,8 +106,9 @@ class GuiDataGateway(DataGateway):
     Opens a message box if the connection to the dataserver fails
     and assures that the request returns something.
 
-    !! This is not thread safe, make sure that this gateway is only
-    used by a single thread !!"""
+    This is not thread safe, make sure that this gateway is only
+    used by a single thread !!
+    """
     def __init__(
         self,
         addr: str = 'localhost',
@@ -290,7 +290,7 @@ class GuiDataGateway(DataGateway):
 
     def register_callback(self, path, func, is_group: bool = False):
         """
-        Overwrite :meth:`p5control.gateway.datagw.DataGateway.register_callback
+        Overwrite :meth:`p5control.gateway.datagw.DataGateway.register_callback`
         to include gui error handling.
         """
         if not self.allow_callback:
