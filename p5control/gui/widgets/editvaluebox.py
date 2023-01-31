@@ -1,5 +1,3 @@
-from typing import Union
-
 from qtpy.QtCore import Slot
 from qtpy.QtWidgets import QAbstractSpinBox
 
@@ -7,9 +5,19 @@ from ...gateway import DataGateway
 from .monitorvaluebox import MonitorValueBox
 
 class EditValueBox(MonitorValueBox):
-    """Widget which subscribes to a value on the dataserver and 
-    dispalys it and can be edited by the user to change it."""
+    """
+    Widget which subscribes to a value on the dataserver and dispalys it and can be edited by
+    the user to change it.
 
+    Parameters
+    ----------
+    dgw : DataGateway
+        gateway to the dataserver
+    path : str
+        dataset path in the hdf5 file
+    setter : callable
+        function to call with setter(new_value) whenever the value is changed by the user
+    """
     def __init__(
         self,
         dgw: DataGateway,
@@ -19,17 +27,6 @@ class EditValueBox(MonitorValueBox):
         *args,
         **kwargs
     ):
-        """
-        Parameters
-        ----------
-        dgw : DataGateway
-            gateway to the dataserver
-        path : str
-            dataset path in the hdf5 file
-        setter : func
-            function to call with setter(new_value) whenever the 
-            value is changed by the user
-        """
         super().__init__(dgw, path, selector, *args, **kwargs)
         self.setter = setter
 
@@ -48,7 +45,7 @@ class EditValueBox(MonitorValueBox):
             super()._callback(arr)
 
             self.last_value = self.value()
-    
+
     @Slot()
     def onEditingFinished(self):
         """Call self.setter with new value if it has changed."""

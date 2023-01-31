@@ -1,6 +1,17 @@
+"""
+This module defines the model and view for a legend based on `QListView`.
+"""
 from typing import Iterable
 
-from qtpy.QtCore import Signal, Qt, Slot, QPoint, QModelIndex, QMimeData, QItemSelection
+from qtpy.QtCore import (
+    Signal,
+    Qt,
+    Slot,
+    QPoint,
+    QModelIndex,
+    QMimeData,
+    QItemSelection
+)
 
 from qtpy.QtWidgets import (
     QAbstractItemView,
@@ -25,10 +36,14 @@ from pyqtgraph import ItemSample
 
 
 def QPixmapFromItem(item: QGraphicsItem) -> QPixmap:
-    """paint QGraphicsItem to QPixmap, can e.g. be used to create an
-    QIcon from the Item, as in the legend
-    
-    item needs to implement item.paint function
+    """
+    Paint QGraphicsItem to QPixmap, can e.g. be used to create an QIcon from the Item, as in the
+    legend.
+
+    Parameters
+    ----------
+    item : QGraphicsItem
+        item which implements ``paint`` method
     """
     pixmap = QPixmap(item.boundingRect().size().toSize())
     pixmap.fill(Qt.transparent)
@@ -36,10 +51,13 @@ def QPixmapFromItem(item: QGraphicsItem) -> QPixmap:
     painter.setRenderHint(QPainter.Antialiasing)
     item.paint(painter, QStyleOptionGraphicsItem())
     return pixmap
-    
 
 
 class LegendModel(QStandardItemModel):
+    """
+    QStandardItemModel which holds the configs of the legend. The config dictionary for a plot
+    is detailed in :mod:`p5control.gui.widgets.datagw_plot`.
+    """
     def __init__(self):
         super().__init__()
         self.configs = {}
@@ -48,6 +66,14 @@ class LegendModel(QStandardItemModel):
         self,
         config
     ):
+        """
+        Add item to legend, specified with config.
+
+        Parameters
+        ----------
+        config : dict
+            plot config dictionary
+        """
         list_item = QStandardItem(config["name"])
         list_item.setData(config["id"], Qt.UserRole)
 
@@ -64,6 +90,14 @@ class LegendModel(QStandardItemModel):
         self,
         id: str
     ):
+        """
+        Remove config by its `id`.
+
+        Parameters
+        ----------
+        id : str
+            config id
+        """
         for row in range(self.invisibleRootItem().rowCount()):
             list_item = self.invisibleRootItem().child(row, 0)
 
@@ -78,6 +112,15 @@ class LegendModel(QStandardItemModel):
         self,
         id: str
     ):
+        """
+        Update the item by its `id`. This regenerates the icon and resets the name, updating
+        the shown widget if the config has been modified, e.g. changing plot color.
+
+        Parameters
+        ----------
+        id : str
+            config id
+        """
         for row in range(self.invisibleRootItem().rowCount()):
             list_item = self.invisibleRootItem().child(row, 0)
             itemid = list_item.data(Qt.UserRole)
@@ -93,7 +136,7 @@ class LegendModel(QStandardItemModel):
         self,
         indexes: Iterable[QModelIndex]
     ) -> QMimeData:
-        """Send hdf5 path of the item as QMimeData text"""
+        """Send hdf5 path of the item as QMimeData text."""
         item = self.itemFromIndex(indexes[0])
         itemid = item.data(Qt.UserRole)
 
@@ -103,13 +146,33 @@ class LegendModel(QStandardItemModel):
         return data
 
 class LegendView(QListView):
+    """
+    Custom `QListView` which represents a legend for a plot. Includes and Icon representing
+    the `plotDataItem` and displays the name.
+
+    Wraps ``addItem``, ``removeItem`` and ``updateItem`` from `LegendModel` for easy
+    manipulation of the model from the view.
+
+    Parameters
+    ----------
+    dragEnabled : Optional, True
+        enable dragging
+    customContextMenu : Optional, True
+        experimentally enables custom context menu
+    *args, **kwargs
+        passed to super().__init__
+    """
 
     deleteRequested = Signal(str)
-    """emitted if an element should be remove from the plot, provides id"""
+    """
+    **Signal(str)** - emitted if an element should be remove from the plot, provides id
+    """
 
     selected = Signal(str)
-    """emitted if the selection changes, provides the id or "" if there
-    are no longer any elements"""
+    """
+    **Signal(str)** - emitted if the selection changes, provides the id or "" if there
+    are no longer any elements
+    """
 
     def __init__(
         self,
@@ -148,7 +211,8 @@ class LegendView(QListView):
         """remove all items currently selected."""
         indexes = self.selectedIndexes()
 
-        #TODO: does this work with multiple    
+        #TODO: does this work with multiple? By default, only a single element
+        # can be selected.    
         for ind in indexes:
             list_item = self.legend_model.itemFromIndex(ind)
             itemid = list_item.data(Qt.UserRole)
@@ -183,7 +247,7 @@ class LegendView(QListView):
         selected: QItemSelection,
         deselected: QItemSelection
     ):
-        """Emit selected if the seleciton changes"""
+        """Emit selected if the selection changes"""
         indexes = selected.indexes()
 
         if len(indexes) > 0:
