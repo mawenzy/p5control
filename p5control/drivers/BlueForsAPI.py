@@ -34,6 +34,18 @@ class BlueForsAPI(BaseDriver):
         self._latest_P6 = 0
 
         self._latest_Flow = 0
+        
+    """
+    Measurement
+    % TODO
+    def get_data(self):
+        logger.debug(f'{self._name}.get_data()')
+
+        return {
+            "time":
+            "Tmcbj":
+        }
+    """
 
     """
     Response
