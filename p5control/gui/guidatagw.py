@@ -39,9 +39,6 @@ class WrapNetref():
         self._secret_type = type(netref)
         self.dgw = dgw
 
-    def __str__(self) -> str:
-        return f"<WrapNetref wrapping {self._secret_type}>"
-
     def __call__(self, *args, **kwargs):
         logger.debug('Calling %s with args %s and kwargs %s',
             self._secret_netref, str(args), str(kwargs))
@@ -83,10 +80,10 @@ class WrapNetref():
         return self.dgw.network_safe_getattr(self._secret_netref, attr)
 
     def __iter__(self):
-        return self.dgw.network_safe_getattr(self._secret_netref, '__iter__')
+        return self.dgw.network_safe_getattr(self._secret_netref, '__iter__', call=True)
 
     def __next__(self):
-        return self.dgw.network_safe_getattr(self._secret_netref, '__next__')
+        return self.dgw.network_safe_getattr(self._secret_netref, '__next__', call=True)
 
     @property
     def __class__(self):
@@ -96,6 +93,8 @@ class WrapNetref():
         """Allow for pickling of the wrapped netref."""
         return pickle.loads, (pickle.dumps(self._secret_netref),)
 
+    def __str__(self) -> str:
+        return self.dgw.network_safe_getattr(self._secret_netref, '__str__', call=True)
 
 class GuiDataGatewayError(Exception):
     """related to errors specifig to GuiDataGateway"""
@@ -139,6 +138,7 @@ class GuiDataGateway(DataGateway):
         self,
         obj: Any,
         attr: Any,
+        call: bool= False
     ):
         """
         Tries ``getattr(obj, attr)`` and handles any connection problems, assures that
@@ -149,7 +149,7 @@ class GuiDataGateway(DataGateway):
             logger.debug("safe %s, '%s'", str(obj), attr)
             res = getattr(obj, attr)
 
-            if attr in ['__iter__', '__next__']:
+            if call:
                 res = res()
 
             if isinstance(res, BaseNetref):
@@ -182,7 +182,7 @@ class GuiDataGateway(DataGateway):
                             logger.debug('retrying obj: %s, attr: "%s"', str(obj), attr)
                             res = getattr(obj, attr)
 
-                        if attr in ['__iter__', '__next__']:
+                        if call:
                             res = res()
 
                         if isinstance(res, BaseNetref):
