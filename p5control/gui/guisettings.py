@@ -1,3 +1,7 @@
+"""
+This module defines settings which are common througout the gui elements.
+"""
+
 DATA_BUFFER_MAX_LENGTH = 1000
 """max length for data buffer"""
 

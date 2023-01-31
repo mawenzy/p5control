@@ -4,7 +4,7 @@ This file defines :class:`GuiDataGateway` which extends
 This informs the user about the error and lets him handle the problem while the gui if paused,
 such that it will not get into a broken state.
 
-Since ``rpyc`` often only returns :class:`BaseNetref`, which send and receive data if e.g.
+Since ``rpyc`` often only returns ``BaseNetref``, which send and receive data if e.g.
 attributes are accessed, we define the class :class:`WrapNetref` to wrap these and catch
 connection errors which might arise.
 """
