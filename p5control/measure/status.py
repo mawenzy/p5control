@@ -1,5 +1,6 @@
 """
-Class to facilitate measurement of the status of the instruments while the instrument server is running. A thread with this measurement is automatically started with the instrument server.
+Class to facilitate measurement of the status of the instruments while the instrument server is
+running. A thread with this measurement is automatically started with the instrument server.
 """
 import logging
 import threading
@@ -18,7 +19,7 @@ class StatusMeasurementError(Exception):
     """Exception related to the status measurement"""
 
 class StatusMeasurement:
-    """Call ``get_status`` on all provided devices. Implements the python context manager.
+    """Calls ``get_status`` on all provided devices. Implements the python context manager.
 
     Parameters
     ----------
@@ -27,7 +28,6 @@ class StatusMeasurement:
     refresh_delay: float, default = 10
         pause between collecting status, by default 10s
     """
-
     def __init__(
         self,
         devices: Dict[str, Any],
@@ -38,11 +38,13 @@ class StatusMeasurement:
 
         self._thread = None
         self.STOP_EVENT = threading.Event()
-        # this event gets set when _status_measurement_thread has stopped 
+        # this event gets set when _status_measurement_thread has stopped
         self.STATUS_THREAD_STOP_EVENT = threading.Event()
 
     def start(self):
-        """Start the status measurement thread. Does not block but returns after starting the thread."""
+        """
+        Start the status measurement thread. Does not block but returns after starting the thread.
+        """
         if self._thread:
             raise StatusMeasurementError(
                 'Can\'t start the status measurement because it is already running.'
@@ -55,10 +57,12 @@ class StatusMeasurement:
         self._thread.start()
 
     def stop(self):
-        """Stop the status measurement thread. Blocks until the thread has finished."""
+        """
+        Stop the status measurement thread. Blocks until the thread has finished.
+        """
         if not self._thread:
             raise StatusMeasurementError(
-                f'Can\'t stop the status measurement because it is not running.'
+                'Can\'t stop the status measurement because it is not running.'
             )
 
         self.STOP_EVENT.set()
@@ -82,30 +86,58 @@ class StatusMeasurement:
         stop_event: threading.Event,
         refresh_delay: float = None,
     ):
+        """
+        This function continuously collects the output of ``get_status`` of the devices in
+        regular intervals and safes the result to the data server. Between these collections,
+        the time `refresh_delay` is waited and the `stop_event`, meaning that the actual time
+        between calls is longer than the provided delay.
+
+        Instrument drivers which do not implement ``get_status`` are automatically skipped. If
+        you want to closely control how the data is safed, implement ``_save_status`` for the
+        driver. If the driver does not have this attribute, a default saving method is used and
+        a timestamp is automatically added.
+
+        Parameters
+        ----------
+        stop_event : threading.Event
+            this function stops running when this event is set
+        refresh_delay: optional, float
+            how long to wait between collecting the status of the devices. Can be used to
+            overwrite the value which has been provided in ``__init__``
+        """
         delay = refresh_delay if refresh_delay else self.refresh_delay
         logger.info("thread started")
 
         dgw = DataGateway()
         dgw.connect()
 
-        # data cache used to cache the data if the data server is somehow down
-        # format {name: res,...}
-        data_cache = {}
-
         # Thread block
         while not stop_event.wait(delay):
             logger.debug("collecting status")
 
-            """get status of all the devices"""
-            for name, (dev, _) in self._devices.items():
+            # iterate over all devices with a shallow copy, such that we can remove
+            # the devices which do not implement ``get_status``.
+            for name, (dev, _) in self._devices.copy().items():
 
                 try:
                     res = dev.get_status()
                 except NotImplementedError:
+                    self._devices.pop(name)
+                    logger.debug(
+                        'removing instrument "%s", since it does not implement get_status',
+                        name
+                    )
                     continue
 
                 # skip emtpy data
                 if isinstance(res, dict) and len(res) == 0:
+                    continue
+                elif len(res) == 0:
+                    continue
+
+                # allow for custom save functionality
+                if hasattr(dev, '_save_status'):
+                    dev._save_status(f"{STATUS_MEASUREMENT_BASE_PATH}/{name}", res, dgw)
                     continue
 
                 # append time stamp
@@ -115,13 +147,10 @@ class StatusMeasurement:
                 else:
                     res = np.concatenate(([[time.time()]], res), axis=1)
 
-                if hasattr(dev, '_save_status'):
-                    dev._save_status(f"{STATUS_MEASUREMENT_BASE_PATH}/{name}", res, dgw)
-                else:
-                    dgw.append(
-                        f"{STATUS_MEASUREMENT_BASE_PATH}/{name}",
-                        res
-                    )
+                dgw.append(
+                    f"{STATUS_MEASUREMENT_BASE_PATH}/{name}",
+                    res
+                )
 
         logger.info('stopping, disconnecting from data server.')
         dgw.disconnect()
