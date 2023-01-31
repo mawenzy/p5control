@@ -4,6 +4,7 @@ from requests import get as requests_get
 import numpy as np
 from .basedriver import BaseDriver
 from logging import getLogger
+from ..settings import T_STRING, P_STRING
 
 # Logger
 logger = getLogger(__name__)
@@ -174,8 +175,6 @@ class BlueForsAPI(BaseDriver):
         status,
         dgw
     ):
-        T_STRING = 'temperatures'
-        P_STRING = 'pressures'
         if 'T50K' in status:
             dgw.append(f"{hdf5_path}/{T_STRING}/50K", status['T50K'])
         if 'T4K' in status:

@@ -14,3 +14,7 @@ MEASUREMENT_BASE_PATH = "/measurement"
 
 STATUS_MEASUREMENT_BASE_PATH = "/status"
 """path in the hdf5 file under which the statuses are stored"""
+
+T_STRING = 'temperatures'
+P_STRING = 'pressures'
+"""path in the hdf5 file in /status/BlueFors"""
