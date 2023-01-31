@@ -30,7 +30,7 @@ class StatusMeasurement:
     def __init__(
         self,
         devices: Dict[str, Any],
-        refresh_delay: float = 10,
+        refresh_delay: float = 1,
     ):
         self._devices = devices
         self.refresh_delay = refresh_delay
@@ -133,6 +133,10 @@ class StatusMeasurement:
                     continue
 
                 # allow for custom save functionality
+                if hasattr(dev, '_save_status'):
+                    dev._save_status(f"{STATUS_MEASUREMENT_BASE_PATH}/{name}", res, dgw)
+                    continue
+
                 if hasattr(dev, '_save_status'):
                     dev._save_status(f"{STATUS_MEASUREMENT_BASE_PATH}/{name}", res, dgw)
                     continue
