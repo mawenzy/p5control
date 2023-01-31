@@ -10,7 +10,6 @@ from typing import Dict, Any
 import numpy as np
 
 from ..gateway import DataGateway
-from ..gateway.basegw import BaseGatewayError
 from ..settings import STATUS_MEASUREMENT_BASE_PATH
 
 logger = logging.getLogger(__name__)
@@ -130,9 +129,7 @@ class StatusMeasurement:
                     continue
 
                 # skip emtpy data
-                if isinstance(res, dict) and len(res) == 0:
-                    continue
-                elif len(res) == 0:
+                if len(res) == 0:
                     continue
 
                 # allow for custom save functionality
