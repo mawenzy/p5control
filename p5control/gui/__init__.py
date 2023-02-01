@@ -18,7 +18,8 @@ from .widgets import (
     DatasetTableView,
     DatasetDimsTableView,
     PlotForm,
-    DataGatewayPlot
+    DataGatewayPlot,
+    PlotTabWidget
 )
 
 from .cleanupapp import CleanupApp
