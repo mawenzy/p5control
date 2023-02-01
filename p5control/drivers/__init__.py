@@ -8,9 +8,9 @@ Device drivers
 """
 from .keysight34461A import Keysight34461A
 from .keysightB2962A import KeysightB2962A
-from .GIR2002 import GIR2002
-from .ZNB40 import ZNB40
-from .BlueForsAPI import BlueForsAPI
+from .gir2002 import GIR2002
+from .znb40 import ZNB40
+from .blueforsapi import BlueForsAPI
 
 """
 Test driver
