@@ -47,7 +47,10 @@ class GIR2002(BaseDriver):
     def get_data(self):
         logger.debug(f'{self._name}.get_data()')
 
-        return np.array([[time.time(), self.read()]])
+        return {
+            "time": time.time(),
+            "val": self.read()
+        }
 
 
     """

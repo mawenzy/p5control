@@ -21,7 +21,7 @@ class KeysightB2962A(BaseDriver):
     """
     Additional custom functionality
     """
-    def setup_voltage_sinus_mode(self, channel=None, freq=0.1):
+    def setup_voltage_sinus_mode(self, channel=None, freq=0.1, ampl=1):
         self._inst.write("*RST")
 
         if channel is None:
@@ -30,11 +30,12 @@ class KeysightB2962A(BaseDriver):
             self._inst.write(f":SOURce{ch}:FUNC:MODE VOLT")
             self._inst.write(f":SOURce{ch}:VOLT:MODE ARB")
             self._inst.write(f":SOURce{ch}:ARB:FUNC SIN")
-            self._inst.write(f":SOURce{ch}:ARB:VOLT:SIN:AMPL 1")
+            self._inst.write(f":SOURce{ch}:ARB:VOLT:SIN:AMPL {ampl}")
             self._inst.write(f":SOURce{ch}:ARB:VOLT:SIN:FREQ {freq}")
 
             self._inst.write(f":TRIGger{ch}:TRAN:SOURce AINT")
             self._inst.write(f":TRIGger{ch}:TRAN:COUNt INF")
+            self._inst.write(f":ARM{ch}:TRAN:COUNt INF")
         self._inst.query("*OPC?")
 
     def initialize(self, channel=None):

@@ -2,7 +2,7 @@
 import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(
-    filename='test_server.log',
+    filename='bluefors_server.log',
     level=logging.DEBUG,
     filemode='w', # overwrites logs every time this script is started
     format='%(asctime)s.%(msecs)03d %(levelname)-8s %(thread)6d %(name)-30s %(funcName)-20s %(message)s',
@@ -28,6 +28,7 @@ inserv._add('multi1', drivers.Keysight34461A, 'TCPIP0::192.168.1.109::INSTR')
 # inserv._add('femtos')
 # inserv._add('motor')
 
+print("Added instruments successfully.")
 
 inserv.start()
 

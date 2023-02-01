@@ -32,7 +32,7 @@ class StatusMeasurement:
         devices: Dict[str, Any],
         refresh_delay: float = 1,
     ):
-        self._devices = devices
+        self._devices = devices.copy()
         self.refresh_delay = refresh_delay
 
         self._thread = None

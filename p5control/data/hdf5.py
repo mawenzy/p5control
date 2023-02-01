@@ -247,6 +247,9 @@ class HDF5FileInterface():
             except KeyError as error:
                 raise KeyError(f'Error when converting {arr} to dtype {dtype}, '
                     'likely due to mismatched keys in the dictionary and dtype') from error
+            except ValueError as error:
+                logger.critical(f'conversion failed from {arr} to dtype {dtype}')
+                raise error
 
         return arr
 

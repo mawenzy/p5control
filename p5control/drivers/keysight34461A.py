@@ -49,6 +49,8 @@ class Keysight34461A(BaseDriver):
         self._inst.write('TRIG:SOUR IMM') 
         self._inst.write("TRIG:COUN INF")
         self._inst.write("SAMP:COUN MAX")
+        self._inst.write('DISP:TEXT "measuring    "')
+        self.textcnt = 0
 
     def start_measuring(self):
         self._inst.write("INIT")
@@ -66,13 +68,17 @@ class Keysight34461A(BaseDriver):
 
         # set time for next cycle
         self.last_time = now
+        
+        # update display text
+        self._inst.write(f'DISP:TEXT "measuring{"."*self.textcnt:4s}"')
+        self.textcnt = (self.textcnt + 1) % 4
 
         self.batch += 1     
         self.batch = self.batch%10   
         return {
-            "time": times,
-            "V": data,
-            "trig": np.ones(np.shape(times))*self.batch*.1
+            "time": list(times),
+            "V": list(data),
+            "trig": list(np.ones(np.shape(times))*self.batch*.1)
         }
 
     # def _save_data(self, hdf5_path: str, array, dgw):

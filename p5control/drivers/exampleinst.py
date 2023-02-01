@@ -71,8 +71,8 @@ class ExampleInst(BaseDriver):
         self.last_time = now
 
         return {
-            "time": times,
-            "V": values,
+            "time": list(times),
+            "V": list(values),
         }
 
 
