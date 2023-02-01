@@ -30,6 +30,8 @@ class Keysight34461A(BaseDriver):
 
         self.batch = 0
 
+        self._inst.write("DISP:TEXT 'connected'")
+
     """
     Measuring setup
     """
@@ -89,6 +91,8 @@ class Keysight34461A(BaseDriver):
         self._inst.write("*CLS") # clear status command
         self._inst.write("*RST") # reset the instrument for SCPI operation
         self._inst.query("*OPC?")  # wait for the operation to complete
+
+        self._inst.write("DISP:TEXT ''")
 
     """
     Additional custom functionality
