@@ -23,14 +23,6 @@ p5control.gui.widgets.datagw\_treeview module
    :undoc-members:
    :show-inheritance:
 
-p5control.gui.widgets.editvaluebox module
------------------------------------------
-
-.. automodule:: p5control.gui.widgets.editvaluebox
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 p5control.gui.widgets.legend module
 -----------------------------------
 
@@ -42,7 +34,19 @@ p5control.gui.widgets.legend module
 p5control.gui.widgets.monitorvaluebox module
 --------------------------------------------
 
+.. image:: images/monitorvaluebox.png
+
 .. automodule:: p5control.gui.widgets.monitorvaluebox
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+p5control.gui.widgets.editvaluebox module
+-----------------------------------------
+
+.. image:: images/editvaluebox.png
+
+.. automodule:: p5control.gui.widgets.editvaluebox
    :members:
    :undoc-members:
    :show-inheritance:
