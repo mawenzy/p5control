@@ -206,4 +206,4 @@ class ZNB40(BaseDriver):
             return
 
         path = f"{hdf5_path}/{self._name}/{data['timestamp']}"
-        dgw.append(path, data['measured_S'])
+        dgw.append(path, data['measured_S'], maxf=1.0, minf=2.0)

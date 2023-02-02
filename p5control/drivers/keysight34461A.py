@@ -83,9 +83,15 @@ class Keysight34461A(BaseDriver):
             "trig": list(np.ones(np.shape(times))*self.batch*.1)
         }
 
-    # def _save_data(self, hdf5_path: str, array, dgw):
-    #     self.batch += 1        
-    #     return super()._save_data(f"{hdf5_path}/{self.batch:04d}", array, dgw)
+    def _save_data(self, hdf5_path, array, dgw):
+        """save data and set attributes for default values for buffers."""
+        path = f"{hdf5_path}/{self._name}"
+        dgw.append(
+            path,
+            array,
+            max_length=int(10000),
+            down_sample=int(10)
+        )
 
     def stop_measuring(self):
         self._inst.write("*CLS") # clear status command

@@ -9,6 +9,7 @@ from pyqtgraph import PlotWidget
 
 from .legend import LegendView
 from .plotform import PlotForm
+from ..guisettings import DATA_BUFFER_MAX_LENGTH, DOWN_SAMPLE
 from ..databuffer import DataBuffer
 from ...util import name_generator, color_cycler
 
@@ -140,6 +141,17 @@ class DataGatewayPlot(QSplitter):
         compound_names = node.dtype.names
         ndim = node.shape
 
+        # databuffer settings
+        attrs = node.attrs
+        if "max_length" in attrs:
+            max_length = int(attrs["max_length"])
+        else:
+            max_length = DATA_BUFFER_MAX_LENGTH
+        if "down_sample" in attrs:
+            down_sample = int(attrs["down_sample"])
+        else:
+            down_sample = DOWN_SAMPLE
+
         with self.lock:
             id = next(plot_id_generator)
             plotDataItem = self.plot_widget.plot(
@@ -156,7 +168,12 @@ class DataGatewayPlot(QSplitter):
                 "lock": threading.Lock(),
                 "plotDataItem": plotDataItem,
                 "path": path,
-                "dataBuffer": DataBuffer(self.dgw, path),
+                "dataBuffer": DataBuffer(
+                    self.dgw, 
+                    path,
+                    max_length=max_length,
+                    down_sample=down_sample
+                    ),
                 # settings
                 "name": name,
                 "pen": pen,
