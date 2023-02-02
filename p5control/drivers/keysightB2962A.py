@@ -50,3 +50,6 @@ class KeysightB2962A(BaseDriver):
         self._inst.write(write)
     def read(self):
         return self._inst.read()
+
+    def timeout(self, timeout):
+        self._inst.timeout = int(timeout)
