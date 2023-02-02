@@ -60,3 +60,11 @@ p5control.gui.widgets.valueboxform module
    :members:
    :undoc-members:
    :show-inheritance:
+
+p5control.gui.widgets.measurementcontrol module
+-----------------------------------------------
+
+.. automodule:: p5control.gui.widgets.measurementcontrol
+   :members:
+   :undoc-members:
+   :show-inheritance:

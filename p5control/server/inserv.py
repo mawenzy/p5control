@@ -191,7 +191,7 @@ class InstrumentServer(BaseServer):
         ----------
         name : str, optional
             name of the measurement, will determine the path under which the results are
-            safed in the hdf5 path. I no name is provided, a generic name is automatically
+            safed in the hdf5 path. I an empty name is provided, a generic name is automatically
             generated, which updates with every call.
         include : List[str], optional
             specify the instruments to measure, given their names.
@@ -202,11 +202,11 @@ class InstrumentServer(BaseServer):
         logger.debug('"%s" with incl %s and excl %s', name, include, exclude)
         # get devices
         if include is not None:
-            devices = {name: self._devices[name] for name in include}
+            devices = {dev_name: self._devices[dev_name] for dev_name in include}
         elif exclude is not None:
             devices = self._devices.copy()
-            for name in exclude:
-                devices.pop(name)
+            for dev_name in exclude:
+                devices.pop(dev_name)
         else:
             devices = self._devices
 
@@ -215,17 +215,24 @@ class InstrumentServer(BaseServer):
             self._measurement = Measurement(devices, name)
             return self._measurement
 
-        # decide if a new measurement is needed
+        # whether the devices are the same
         ndev = set(devices.keys())
         odev = set(self._measurement._devices.keys())
+        same_devs = ndev-odev == set() and odev-ndev == set()
 
-        if name and name == self._measurement._name and ndev-odev == set() and odev-ndev == set():
+        if ((name and name == self._measurement.name()) or name is None) and same_devs:
+            # return existing instrument if same devs and either
+            # 1: same name  or
+            # 2: name is None
             logger.info("returning existing measurement.")
             return self._measurement
-        elif self._measurement._running:
+
+        if self._measurement.running():
             raise MeasurementError(
                 'Can\'t create new measurement because the old one is still runing.'
             )
         else:
+            if name and name == "":
+                name = None
             self._measurement = Measurement(devices, name)
             return self._measurement

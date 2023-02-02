@@ -56,10 +56,8 @@ class CustomButton(QAbstractButton):
         if self.parent():
             # parent is QTabBar
             index = self.parent().currentIndex()
-            position = self.style().styleHint(
-                QStyle.SH_TabBar_CloseButtonPosition, widget=self.parent()
-            )
-            # convert int result to the righ type
+            position = self.style().styleHint(QStyle.SH_TabBar_CloseButtonPosition)
+            # convert int result to the right type
             position = QTabBar.LeftSide if position == 0 else QTabBar.RightSide
 
             if self.parent().tabButton(index, position) == self:
@@ -119,7 +117,7 @@ class PlotTabWidget(QTabWidget):
             return
         self.closeButtonOnTabs = closeable
         # which side the buttons are on, platform dependent, 0 -> left, 1 -> right
-        closeSide = self.style().styleHint(QStyle.SH_TabBar_CloseButtonPosition, widget=self)
+        closeSide = self.style().styleHint(QStyle.SH_TabBar_CloseButtonPosition)
         closeSide = QTabBar.LeftSide if closeSide == 0 else QTabBar.RightSide
 
         if not closeable:
@@ -147,7 +145,7 @@ class PlotTabWidget(QTabWidget):
         index = super().addTab(widget, a1)
 
         if self.closeButtonOnTabs:
-            closeSide = self.style().styleHint(QStyle.SH_TabBar_CloseButtonPosition, widget=self)
+            closeSide = self.style().styleHint(QStyle.SH_TabBar_CloseButtonPosition)
             closeSide = QTabBar.LeftSide if closeSide == 0 else QTabBar.RightSide
             closeButton = CustomButton(self.tabBar())
             closeButton.clicked.connect(self._handle_close_btn)
@@ -159,7 +157,7 @@ class PlotTabWidget(QTabWidget):
     def _handle_close_btn(self):
         sender = self.sender()
         tabToClose = -1
-        closeSide = self.style().styleHint(QStyle.SH_TabBar_CloseButtonPosition, widget=self)
+        closeSide = self.style().styleHint(QStyle.SH_TabBar_CloseButtonPosition)
         closeSide = QTabBar.LeftSide if closeSide == 0 else QTabBar.RightSide
         for i in range(self.count()):
             if closeSide == QTabBar.LeftSide:

@@ -118,3 +118,8 @@ class Measurement:
         """Pyton context manager teardown"""
         self.stop()
  
+    def name(self):
+        return self._name
+
+    def running(self):
+        return self._running
