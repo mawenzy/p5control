@@ -1,27 +1,33 @@
+"""
+This module provides a plot widget, which consists out of a `pyqtgraph` `PlotWidget` with an added
+external legend. Each line is represented by a config dictionary, which is automatically generated
+from the attributes of the dataset and can be edited with :class:`PlotForm`
+
+Plot config
+-----------
+
+* **id** (``str``)
+    Unique id for this config.
+* **lock** (``threading.Lock``)
+    Acquire this lock when making changes to the config or objects references within.
+* **plotDataItem** (``pyqtgraph.PlotDataItem``)
+    the actual item which is plotted in the `PlotWidget`.
+* **path** (``str``)
+    hdf5 path of the dataset to plot
+
+to be continued...
+"""
 import threading
-import time
 
 import h5py
-from qtpy.QtCore import Slot, Signal, Qt
+from qtpy.QtCore import Slot, Signal
 from qtpy.QtWidgets import QSplitter, QHBoxLayout, QWidget, QCheckBox, QVBoxLayout
-from qtpy.QtGui import QDragEnterEvent, QDropEvent, QColor
+from qtpy.QtGui import QDragEnterEvent, QDropEvent
 from pyqtgraph import PlotWidget
 
 from .legend import LegendView
 from .plotform import PlotForm
-from ..guisettings import DATA_BUFFER_MAX_LENGTH, DOWN_SAMPLE
-from ..databuffer import DataBuffer
-from ...util import name_generator, color_cycler
-
-# generate unique ids for the plots
-plot_id_generator = name_generator(
-    "plot",
-    width=4
-)
-
-# cycle through a set of colors
-pen_colors = color_cycler() 
-
+from ..models import PlotConfig, DsetMultPlotConfig
 
 class DataGatewayPlot(QSplitter):
 
@@ -44,7 +50,7 @@ class DataGatewayPlot(QSplitter):
         # plot 
         self.plot_widget = PlotWidget()
         self.plot_widget.setClipToView(True)
-        self.plot_widget.setLimits(xMax=0)
+        # self.plot_widget.setLimits(xMax=0)
         self.plot_widget.setRange(xRange=[-100, 0])
         self.plot_widget.setLabel('bottom', 'Time', 's')
 
@@ -58,7 +64,7 @@ class DataGatewayPlot(QSplitter):
 
         # signals
         self.legend.deleteRequested.connect(self.remove_plot)
-        self.legend.selected.connect(self._onLegendSelected)
+        self.legend.selected.connect(self._on_legend_selected)
 
         # layout + buttons
         if showButtons:
@@ -67,7 +73,7 @@ class DataGatewayPlot(QSplitter):
 
             self.btn_legend = QCheckBox("Legend", self)
             self.btn_legend.setChecked(showLegend)
-            self.btn_legend.stateChanged.connect(self._onLegendCheckboxChanged)
+            self.btn_legend.stateChanged.connect(self._on_legend_checkbox_changed)
 
             buttonLayout = QHBoxLayout()
             buttonLayout.addWidget(self.btn_update)
@@ -95,7 +101,7 @@ class DataGatewayPlot(QSplitter):
         self.setAcceptDrops(True)
 
     @Slot(int)
-    def _onLegendCheckboxChanged(self, state:int):
+    def _on_legend_checkbox_changed(self, state:int):
         if state == 2:
             # checked
             self.legend.setVisible(True)
@@ -103,110 +109,64 @@ class DataGatewayPlot(QSplitter):
             self.legend.setVisible(False)
 
     @Slot(str)
-    def _onLegendSelected(self, id:str):
+    def _on_legend_selected(self, plotid:str):
         for plot in self.plots:
-            if plot["id"] == id:
+            if plot["id"] == plotid:
                 self.selectedConfig.emit(plot)
                 return
 
-        if id == "":
+        if plotid == "":
             self.selectedConfig.emit({})
 
-    @Slot(str)
     def add_plot(
         self,
-        path: str,    
-        name: str = None,
-        pen: QColor = None,
-        symbolBrush=(255, 255, 255, 100),
-        symbolPen=(255, 255, 255, 100),
-        symbol: str = None,
-        symbolSize: int = 5,
+        path: str,
+        *args,
+        **kwargs
     ):
         """
         Add new plot from the dataset at ``path``.
+
+        Parameters
+        ----------
+        path : str
+            hdf5 path to plot
+        *args, **kwargs
+            see :class:`PlotConfig` for options which can be used.
         """
         node = self.dgw.get(path)
+        config = None
+        if "plotConfig" in node.attrs:
+            plotConfig = node.attrs["plotConfig"]
 
-        if not isinstance(node, h5py.Dataset):
-            return
+            if plotConfig == "dset_mult":
+                config = DsetMultPlotConfig(self.dgw, path, *args, **kwargs)
 
-        # set default values
-        if name is None:
-            name = path.split("/")[-1]
-
-        if pen is None:
-            pen = next(pen_colors)
-
-        compound_names = node.dtype.names
-        ndim = node.shape
-
-        # databuffer settings
-        attrs = node.attrs
-        if "max_length" in attrs:
-            max_length = int(attrs["max_length"])
-        else:
-            max_length = DATA_BUFFER_MAX_LENGTH
-        if "down_sample" in attrs:
-            down_sample = int(attrs["down_sample"])
-        else:
-            down_sample = DOWN_SAMPLE
+        if config is None:
+            config = PlotConfig(self.dgw, path, *args, **kwargs)
 
         with self.lock:
-            id = next(plot_id_generator)
-            plotDataItem = self.plot_widget.plot(
-                name=id,
-                pen=pen,
-                symbolBrush=symbolBrush,
-                symbolPen=symbolPen,
-                symbol=symbol,
-                symbolSize=symbolSize,
-            )
-
-            config = {
-                "id": id,
-                "lock": threading.Lock(),
-                "plotDataItem": plotDataItem,
-                "path": path,
-                "dataBuffer": DataBuffer(
-                    self.dgw, 
-                    path,
-                    max_length=max_length,
-                    down_sample=down_sample
-                    ),
-                # settings
-                "name": name,
-                "pen": pen,
-                "symbolBrush": symbolBrush,
-                "symbolPen": symbolPen,
-                "symbol": symbol,
-                "symbolSize": symbolSize,
-            }
-
-            # set defaults for x and y indexing
-            if compound_names:
-                if "time" in compound_names:
-                    config["x"] = "time"
-                    config["y"] = compound_names[0] if compound_names[0] != "time" else compound_names[1]
-                else:
-                    config["x"] = compound_names[0]
-                    config["y"] = compound_names[1]
-            else:
-                if ndim[-1] <= 1:
-                    return
-                config["x"] = 0
-                config["y"] = 1
-
+            self.plot_widget.addItem(config["plotDataItem"])
             self.plots.append(config)
             self.legend.addItem(config)
 
     @Slot(str)
-    def remove_plot(self, id:str):
+    def remove_plot(
+        self,
+        plotid: str
+    ):
+        """
+        Remove plot by its id.
 
+        Parameters
+        ----------
+        plotid : str
+            unique id of the plot config.
+        """
         index = None
         with self.lock:
-            for i,config in enumerate(self.plots):
-                if config["id"] == id:
+            for i, config in enumerate(self.plots):
+                if config["id"] == plotid:
                     index = i
                     break
 
@@ -215,7 +175,7 @@ class DataGatewayPlot(QSplitter):
                 if config["plotDataItem"] in self.plot_widget.listDataItems():
                     self.plot_widget.removeItem(config["plotDataItem"])
 
-                self.legend.removeItem(id)
+                self.legend.removeItem(plotid)
 
                 lock = config["lock"]
 
@@ -229,21 +189,12 @@ class DataGatewayPlot(QSplitter):
 
         with self.lock:
             for config in self.plots:
-                dataBuffer = config["dataBuffer"]
-                plotDataItem = config["plotDataItem"]
-
-                xdata = dataBuffer.data[config["x"]]
-                ydata = dataBuffer.data[config["y"]]
-
-                plotDataItem.setData(
-                    (xdata - time.time()),
-                    ydata
-                )
+                config.update()
 
     def cleanup(self):
         with self.lock:
             for config in self.plots:
-                config["dataBuffer"].cleanup()
+                config.cleanup()
 
     def connectPlotForm(self, plotForm: PlotForm):
         """Convenience function to setup signal connections

@@ -16,3 +16,4 @@ from .blueforsapi import BlueForsAPI
 Test driver
 """
 from .exampleinst import ExampleInst
+from .exampleinst2 import ExampleInst2

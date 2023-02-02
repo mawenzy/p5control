@@ -210,4 +210,5 @@ class ZNB40(BaseDriver):
                     data['measured_S'], 
                     start_freq = self.get_start_frequency(),
                     stop_freq = self.get_stop_frequency(),
-                    points = self.get_sweep_points())
+                    points = self.get_sweep_points(),
+                    plotConfig = "dset_mult")
