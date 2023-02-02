@@ -1,0 +1,216 @@
+"""
+TODO:
+- comment tha shit out of this function! please!
+- implement factor for AM430
+
+Current Version from 09.12.'20
+- featuring AM430 / BlueFors
+- featuring IPS120 / Scheer III
+
+Current Version from: 25.09.'20
+Features:
+- implementing factor for max rate
+
+Current Version from: 06.08.'20
+Features:
+- printer implemented
+
+Version from: 06.07.'20
+Features:
+- negative magnetic field support
+- reducing to funtion goto with optional rate input
+- change rate on the fly, while in max mode
+- "printer" consitency
+- error if field is to high
+
+@author: Oliver I.
+Many Thanks to: Lukas Kammermeier
+
+e.g.:
+# Set magnetic field
+from driver.magnet import IPS120_10
+magnet=IPS120_10()
+magnet.reinitialize()
+magnet.goto(0.1,factor=.7)
+magnet.readfield(printer=True)
+magnet.turn_off()
+magnet.exit()
+
+
+or e.g.:
+from driver.magnet import AM430
+magnet=AM430()
+magnet.reinitialize()
+magnet.goto(.01,rate=.1)
+magnet.readfield(printer=True)
+magnet.goto(.02,factor=.7)
+magnet.readfield(printer=True)
+magnet.turn_off()
+magnet.exit()
+"""
+
+"""
+from time import sleep
+import pyvisa
+import numpy as np
+
+class AM430():
+    def __init__(self, IP='192.168.1.103', printer=False):
+        rm=pyvisa.ResourceManager('@py')
+        inst=rm.open_resource('TCPIP::'+IP+'::7180::SOCKET',
+                              read_termination='\r\n',
+                              write_termination='\r\n')
+        self.inst=inst
+        inst.write_termination = u'\r\n'
+        inst.read_termination = u'\r\n'
+        inst.timeout=2000
+        inst.chunk_size = 20480 #100kb
+        
+        fake_idn=self.inst.read()
+        stupid=self.inst.read()
+        if printer==True:
+            print('fake id: %s, '%fake_idn)
+            print('%s - well, fuck you too!'%stupid)
+        
+    def idn(self, printer=False):
+        self.inst.write('*IDN?')
+        idn=self.inst.read()
+        if printer == True:
+            print('id: %s, '%idn)
+        return idn
+        
+    def exit(self):
+        self.inst.close()     
+        
+    def goto_zero(self):
+        self.inst.write('ZERO')
+    
+    def pause(self):
+        self.inst.write('PAUSE')
+        
+    def local(self):
+        self.inst.write('SYSTem:LOCal')
+        
+    def turn_off(self, printer=False):
+        self.goto(0, printer=printer)
+        self.inst.write('*RST')
+        self.inst.write('SYSTem:LOCal')
+        self.inst.query('*OPC?')
+            
+    def readfield(self,printer=False):
+        field=self.inst.query('FIELD:MAGnet?')
+        if printer==True:
+            print('current field is %s T'%field)
+        return float(field)
+    
+    def setfield(self, target, printer=False):
+        self.inst.write('CONFigure:FIELD:TARGet %6.5f'%target)
+        if printer==True:
+            new_target=self.inst.query('FIELD:TARGet?')
+            print('target field is %s T'%new_target)    
+        
+##############################################################################
+    def reinitialize(self, printer=False):
+        self.inst.write('*RST')
+        # Each 4th write should be interrupted with *OPC?
+        self.inst.query('*OPC?')
+        # remote mode
+        self.inst.write('SYSTem:REMote')
+        # clear event register, probably not usable
+        self.inst.write('*CLS')
+        # units tesla/min
+        self.inst.write('CONFigure:FIELD:UNITS 1') #T
+        self.inst.write('CONFigure:RAMP:RATE:UNITS 1') #1/min
+        self.inst.query('*OPC?')
+        # calibration factor
+        self.inst.write('CONFigure:COILconst 0.106500')
+        # max current
+        self.inst.write('CONFigure:CURRent:LIMit 65')
+        # quench detect on 1 / off 0
+        self.inst.write('CONFigure:QUench:DETect 0')
+        self.inst.query('*OPC?')
+        # set segments (target ramp)
+        self.inst.write('CONFigure:RAMP:RATE:SEGments 2')
+        self.inst.write('CONFigure:RAMP:RATE:FIELD 1,0.2106,5.325')
+        self.inst.write('CONFigure:RAMP:RATE:FIELD 2,0.1053,7')
+        self.inst.query('*OPC?')
+        # set segments (external ramp down)
+        self.inst.write('CONFigure:RAMPDown:RATE:SEGments 2')
+        self.inst.write('CONFigure:RAMPDown:RATE:FIELD 1,0.2106,5.325')
+        self.inst.write('CONFigure:RAMPDown:RATE:FIELD 2,0.1053,7')
+        self.inst.query('*OPC?')
+        # hold mode?
+        self.inst.write('PAUSE')
+        # heater on?
+        if printer==True:
+            print(self.inst.query('SYSTem:ERRor?'))
+            Cc=self.inst.query('COILconst?')
+            print('coil const (.1065 T/A) = %s'%Cc)
+            fu=self.inst.query('FIELD:UNITS?')
+            print('units (1|T) = %s'%fu)
+            rru=self.inst.query('RAMP:RATE:UNITS?')
+            print('units (1|pmin) = %s'%rru)
+            cl=self.inst.query('CURRent:LIMit?')
+            print('current limit (65 A) = %s'%cl)
+            qd=self.inst.query('QUench:DETect?')
+            print('quench detector (1 | on) = %s'%qd)
+            rrs=self.inst.query('RAMP:RATE:SEGments?')
+            print('ramp rate segments (2) = %s'%rrs)
+            seg1=self.inst.query('RAMP:RATE:FIELD:1?')
+            print('seg 1 (.2106T/min, 5.325T) = %s'%seg1)
+            seg2=self.inst.query('RAMP:RATE:FIELD:2?')
+            print('seg 2 (.1053T/min, 7T) = %s'%seg2)
+            rrsd=self.inst.query('RAMPDown:RATE:SEGments?')
+            print('ramp down rate segments (2) = %s'%rrsd)
+            segd1=self.inst.query('RAMPDown:RATE:FIELD:1?')
+            print('segd 1 (.2106T/min, 5.325T) = %s'%segd1)
+            segd2=self.inst.query('RAMPDown:RATE:FIELD:2?')
+            print('segd 2 (.1053T/min, 7T) = %s'%segd2)
+            state=self.inst.query('STATE?')
+            print('state (3 | paused)= %s'%state)
+            rdn=self.inst.query('RAMPDown:COUNT?')
+            print('external ramp downs: %s'%rdn)
+            print('\n')
+
+##############################################################################    
+    def goto(self,target,rate='max', factor=1, printer=False):
+        self.pause()
+        if rate=='max':
+            # set segments (target ramp)
+            self.inst.write('CONFigure:RAMP:RATE:SEGments 2')
+            self.inst.write('CONFigure:RAMP:RATE:FIELD 1,0.2106,5.325')
+            self.inst.write('CONFigure:RAMP:RATE:FIELD 2,0.1053,7')
+            self.inst.query('*OPC?')
+            if factor==1:
+                #do upper bracket
+                factor=1
+            if factor>1:
+                print('Too High STUPID!!')
+            if factor<1:
+                print('Has to be implemented! MF! factor=1')
+        else:
+            # set segments (target ramp)
+            self.inst.write('CONFigure:RAMP:RATE:SEGments 1')
+            self.inst.write('CONFigure:RAMP:RATE:FIELD 1,%6.5f,7'%rate)
+            self.inst.query('*OPC?')           
+            
+        if target==0:
+            self.goto_zero()
+        else:
+            self.setfield(target, printer=printer)
+            self.inst.write('RAMP')
+        check=False
+        while check==False:
+            field=self.readfield(printer=False)
+            if np.abs(field-target) < 1e-5:
+                if printer==True:
+                    print('%6.5f/%6.5f T'%(field,target),end='\r')
+                    print('\nTarget Field reached...OK')
+                check=True
+                break
+            else:
+                if printer==True:
+                    print('%6.5f/%6.5f T'%(field,target),end='\r')
+                sleep(0.1)
+                pass
+"""
