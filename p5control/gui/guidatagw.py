@@ -96,6 +96,10 @@ class WrapNetref():
     def __str__(self) -> str:
         return self.dgw.network_safe_getattr(self._secret_netref, '__str__', call=True)
 
+    def __getitem__(self, item):
+        #TODO: not network safe
+        return self._secret_netref.__getitem__(item)
+
 class GuiDataGatewayError(Exception):
     """related to errors specifig to GuiDataGateway"""
 
