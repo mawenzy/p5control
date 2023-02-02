@@ -29,7 +29,8 @@ from p5control.gui import (
     DataGatewayTreeView,
     ValueBoxForm,
     PlotForm,
-    PlotTabWidget
+    PlotTabWidget,
+    MeasurementControl
 )
 
 class Scheer2MainWindow(QMainWindow):
@@ -107,6 +108,8 @@ class Scheer2MainWindow(QMainWindow):
 
         self.plot_form = PlotForm(self.dgw)
 
+        self.measurement_control = MeasurementControl(self.gw)
+
         self.tabs = PlotTabWidget(self.dgw, plot_form=self.plot_form)
 
         self.setCentralWidget(self.tabs)
@@ -129,13 +132,19 @@ class Scheer2MainWindow(QMainWindow):
         self.plot_form_dock.setMinimumWidth(MIN_DOCK_WIDTH)
         self.plot_form_dock.setWidget(self.plot_form)
 
+        self.measurement_control_dock = QDockWidget('Measurement control', self)
+        self.measurement_control_dock.setMinimumWidth(MIN_DOCK_WIDTH)
+        self.measurement_control_dock.setWidget(self.measurement_control)
+
         # add dock widgets
         self.addDockWidget(Qt.LeftDockWidgetArea, self.tree_dock)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.measurement_control_dock)
         self.addDockWidget(Qt.RightDockWidgetArea, self.form_dock)
         self.addDockWidget(Qt.RightDockWidgetArea, self.plot_form_dock)
 
         self.view_menu.addActions([
             self.tree_dock.toggleViewAction(),
+            self.measurement_control_dock.toggleViewAction(),
             self.form_dock.toggleViewAction(),
             self.plot_form_dock.toggleViewAction()
         ])

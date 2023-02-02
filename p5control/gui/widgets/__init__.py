@@ -10,3 +10,4 @@ from .datasettable import DatasetTableView
 from .datasetdims import DatasetDimsTableView
 from .plotform import PlotForm
 from .plottabwidget import PlotTabWidget
+from .measurementcontrol import MeasurementControl

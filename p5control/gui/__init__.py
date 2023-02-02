@@ -19,7 +19,8 @@ from .widgets import (
     DatasetDimsTableView,
     PlotForm,
     DataGatewayPlot,
-    PlotTabWidget
+    PlotTabWidget,
+    MeasurementControl
 )
 
 from .cleanupapp import CleanupApp
