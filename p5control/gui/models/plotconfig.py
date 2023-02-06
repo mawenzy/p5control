@@ -114,19 +114,19 @@ class PlotConfig(BasePlotConfig):
         # databuffer settings
         attrs = node.attrs
         if "max_length" in attrs:
-            max_length = int(attrs["max_length"])
+            self._config["max_length"] = int(attrs["max_length"])
         else:
-            max_length = DATA_BUFFER_MAX_LENGTH
+            self._config["max_length"] = DATA_BUFFER_MAX_LENGTH
         if "down_sample" in attrs:
-            down_sample = int(attrs["down_sample"])
+            self._config["down_sample"] = int(attrs["down_sample"])
         else:
-            down_sample = DOWN_SAMPLE
+            self._config["down_sample"] = DOWN_SAMPLE
 
         self._config["dataBuffer"] = DataBuffer(
             dgw,
             path,
-            max_length=max_length,
-            down_sample=down_sample
+            max_length=self._config["max_length"],
+            down_sample=self._config["down_sample"]
         )
 
         compound_names = node.dtype.names
