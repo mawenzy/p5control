@@ -1,6 +1,6 @@
 """
 This file defines the class DataGatewayTreeView, which is a Widget which shows
-the directory structure of the hdf5 file behind the gateway in a customized `QTreeView`
+the directory structure of the hdf5 file behind the gateway in a customized `QTreeView`.
 """
 from typing import Union, Iterable
 
@@ -63,7 +63,7 @@ class DataGatewayTreeModel(QStandardItemModel):
     ):
         """
         Add node to the tree, by creating a corresponding `QStandardItem` for the node and
-        appending it in a new row t parent_item.
+        appending it in a new row to parent_item.
 
         Parameters
         ----------

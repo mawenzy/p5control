@@ -100,6 +100,15 @@ class WrapNetref():
         #TODO: not network safe
         return self._secret_netref.__getitem__(item)
 
+    def __setitem__(self, key, value):
+        self._secret_netref.__setitem__(key, value)
+
+    def __delitem__(self, key):
+        self._secret_netref.__delitem__(key)
+
+    def __len__(self):
+        return self.dgw.network_safe_getattr(self._secret_netref, '__len__', call=True)
+
 class GuiDataGatewayError(Exception):
     """related to errors specifig to GuiDataGateway"""
 
