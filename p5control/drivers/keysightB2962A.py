@@ -41,7 +41,7 @@ class KeysightB2962A(BaseDriver):
             self._inst.write(f"INIT (@{channel})")
 
     def setup_offset_measurement(self, max_current =.1):
-        if self._setting is not "offset":
+        if self._setting != "offset":
             self._inst.write("*RST")
             self._inst.write(":sour1:func:mode volt")
             self._inst.write(":sour2:func:mode volt")
@@ -69,7 +69,7 @@ class KeysightB2962A(BaseDriver):
                                 sweep_counts = 10, 
                                 max_current = .1):
 
-        if self._setting is not "sweep":
+        if self._setting != "sweep":
             _half_amplitude = amplitude / 2
             _half_frequency = frequency / 2
             self._inst.write("*RST")
@@ -115,7 +115,7 @@ class KeysightB2962A(BaseDriver):
             logger.debug(f'{self._name} already setup for sweep measurement.')
  
     def setup_sinus_measurement(self, channel=None, freq=0.1, ampl=1):
-        if self._setting is not "sinus":
+        if self._setting != "sinus":
             self._inst.write("*RST")
 
             if channel is None:
