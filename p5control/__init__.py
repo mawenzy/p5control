@@ -1,5 +1,5 @@
 """
-This is the 'insert name' module
+This is the 'p5control' module
 """
 __version__ = '0.0.2'
 

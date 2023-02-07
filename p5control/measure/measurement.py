@@ -23,7 +23,9 @@ class MeasurementError(Exception):
 
 
 class Measurement:
-    """Measure all the provided devices. Implements the python context manager. Make sure that only one measurement is running at a time, because otherwise the calls to ``get_data`` of the drivers will interfere with each other.
+    """Measure all the provided devices. Implements the python context manager. Make sure that
+    only one measurement is running at a time, because otherwise the calls to ``get_data`` of
+    the drivers will interfere with each other.
 
     Parameters
     ----------
@@ -113,16 +115,19 @@ class Measurement:
         """Python context manager setup"""
         self.start()
         return self
-    
+
     def __exit__(self, exc_type, exc_value, traceback):
         """Pyton context manager teardown"""
         self.stop()
 
-    def path(self):
+    def path(self) -> str:
+        """Get the path to the folder where the results will be stored."""
         return self._path
- 
-    def name(self):
+
+    def name(self) -> str:
+        """Name of the measurement."""
         return self._name
 
-    def running(self):
+    def running(self) -> bool:
+        """Whether the measurement is currently running."""
         return self._running

@@ -14,8 +14,3 @@ MEASUREMENT_BASE_PATH = "/measurement"
 
 STATUS_MEASUREMENT_BASE_PATH = "/status"
 """path in the hdf5 file under which the statuses are stored"""
-
-T_STRING = '/LakeShore370AC'
-P_STRING = '/PfeifferMaxiGauge'
-VC_STRING = ''
-"""path in the hdf5 file in /status/BlueFors"""

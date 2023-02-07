@@ -4,7 +4,11 @@ from requests import get as requests_get
 import numpy as np
 from .basedriver import BaseDriver
 from logging import getLogger
-from ..settings import T_STRING, P_STRING, VC_STRING
+
+T_STRING = '/LakeShore370AC'
+P_STRING = '/PfeifferMaxiGauge'
+VC_STRING = ''
+"""path in the hdf5 file in /status/BlueFors"""
 
 # Logger
 logger = getLogger(__name__)
