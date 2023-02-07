@@ -99,7 +99,8 @@ class ZNB40(BaseDriver):
         data = self._inst.query("CALC1:DATA:TRACe? 'Tr1', SDAT")
         data = np.fromstring(data, dtype='float64',sep=',')
         real, imag = data[::2], data[1::2]
-        measured_S = np.array(real+1j*imag, dtype='complex128')
+        S = np.array(real+1j*imag, dtype='complex128')
+        S_db = 20*np.log10(np.abs(S))
 
         # shows measured data once. (is better for performance)
         self._inst.write('SYSTem:DISPlay:UPDate ONCE')
@@ -108,8 +109,14 @@ class ZNB40(BaseDriver):
 
         logger.debug(f'{self._name}.get_data()')
 
-        data = {'measured_S': measured_S,
-                'timestamp': timestamp}
+        
+        data = {
+                'S_db': S_db,
+                'Re': real,
+                'Im': imag,
+                'timestamp': timestamp
+                }
+
         return data
     
     def get_fdata(self):
@@ -202,12 +209,16 @@ class ZNB40(BaseDriver):
         dgw : DataGateway
             gateway to the dataserver
         """
-        if data['measured_S'] is None:
+        if data['S_db'] is None:
             return
+
+        my_dict = {'S_db': data['S_db'],
+                   'Im': data['Im'],
+                   'Re': data['Re']}
 
         path = f"{hdf5_path}/{self._name}/{data['timestamp']}"
         dgw.append(path, 
-                    data['measured_S'], 
+                    my_dict, 
                     start_freq = self.get_start_frequency(),
                     stop_freq = self.get_stop_frequency(),
                     points = self.get_sweep_points(),

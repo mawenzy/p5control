@@ -117,6 +117,9 @@ class Measurement:
     def __exit__(self, exc_type, exc_value, traceback):
         """Pyton context manager teardown"""
         self.stop()
+
+    def path(self):
+        return self._path
  
     def name(self):
         return self._name

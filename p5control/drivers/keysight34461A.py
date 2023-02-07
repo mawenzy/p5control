@@ -9,13 +9,15 @@ from .basedriver import BaseDriver
 
 class Keysight34461A(BaseDriver):
     """Driver for the Keysight34461A. Since it is MessageBased, we can use much
-    of the BaseDriver class
+    of the BaseDriver class.
     """
 
     def open(self):
         """Open connection to the device.
         
-        Overwritten to add the termination characters."""
+        Overwritten to add the termination characters and reset the device after it has been
+        connected.
+        """
         super().open()
 
         # setup termination
