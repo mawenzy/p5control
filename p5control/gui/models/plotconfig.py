@@ -94,6 +94,9 @@ class BasePlotConfig(MutableMapping):
         """
         raise NotImplementedError()
 
+    def config_update(self):
+        pass
+
     def cleanup(self):
         pass
 
@@ -134,11 +137,13 @@ class PlotConfig(BasePlotConfig):
         compound_names = node.dtype.names
         ndim = node.shape
 
+        self._config["subtract_time"] = False
         # set defaults for x and y indexing
         if compound_names:
             if "time" in compound_names:
                 self._config["x"] = "time"
                 self._config["y"] = compound_names[0] if compound_names[0] != "time" else compound_names[1]
+                self._config["subtract_time"] = True
             else:
                 self._config["x"] = compound_names[0]
                 self._config["y"] = compound_names[1]
@@ -161,10 +166,22 @@ class PlotConfig(BasePlotConfig):
                 xdata = dataBuffer.data[self._config["x"]]
                 ydata = dataBuffer.data[self._config["y"]]
 
-            plotDataItem.setData(
-                (xdata - time.time()),
-                ydata
-            )
+            if self._config["subtract_time"]:
+                plotDataItem.setData(
+                    (xdata - time.time()),
+                    ydata
+                )
+            else:
+                plotDataItem.setData(
+                    xdata,
+                    ydata
+                )
+
+    def config_update(self):
+        self._config["dataBuffer"].reload(
+            max_length = self._config["max_length"],
+            down_sample = self._config["down_sample"]
+        )
 
     def cleanup(self):
         self._config["dataBuffer"].cleanup()
