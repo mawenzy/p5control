@@ -27,11 +27,11 @@ from pyqtgraph import PlotWidget
 
 from .legend import LegendView
 from .plotform import PlotForm
-from ..models import PlotConfig, DsetMultPlotConfig
+from ..models import PlotConfig, DsetMultPlotConfig, LnSpcPlotConfig, BasePlotConfig
 
 class DataGatewayPlot(QSplitter):
 
-    selectedConfig = Signal(dict)
+    selectedConfig = Signal(BasePlotConfig)
     """emitted if a plot is selected, provides the config dictionary"""
 
     def __init__(
@@ -141,6 +141,9 @@ class DataGatewayPlot(QSplitter):
 
             if plotConfig == "dset_mult":
                 config = DsetMultPlotConfig(self.dgw, path, *args, **kwargs)
+
+            if plotConfig == "dset_lnspc":
+                config = LnSpcPlotConfig(self.dgw, path, *args, **kwargs)
 
         if config is None:
             config = PlotConfig(self.dgw, path, *args, **kwargs)

@@ -111,10 +111,10 @@ class ZNB40(BaseDriver):
 
         
         data = {
+                'time': timestamp,
                 'S_db': S_db,
                 'Re': real,
                 'Im': imag,
-                'timestamp': timestamp
                 }
 
         return data
@@ -209,17 +209,12 @@ class ZNB40(BaseDriver):
         dgw : DataGateway
             gateway to the dataserver
         """
-        if data['S_db'] is None:
-            return
-
-        my_dict = {'S_db': data['S_db'],
-                   'Im': data['Im'],
-                   'Re': data['Re']}
-
-        path = f"{hdf5_path}/{self._name}/{data['timestamp']}"
+        
+        path = f"{hdf5_path}/{self._name}"
         dgw.append(path, 
-                    my_dict, 
-                    start_freq = self.get_start_frequency(),
-                    stop_freq = self.get_stop_frequency(),
+                    data, 
+                    x_axis = 'f [Hz]',
+                    start = self.get_start_frequency(),
+                    stop = self.get_stop_frequency(),
                     points = self.get_sweep_points(),
-                    plotConfig = "dset_mult")
+                    plotConfig = "dset_lnspc")
