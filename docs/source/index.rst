@@ -9,6 +9,7 @@ This package helps you with controlling your measurement setup using python. It 
    install
    example/index
    api/index
+   development
 
 
 Indices and tables

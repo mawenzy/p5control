@@ -1,4 +1,8 @@
 Install
 =======
 
-As the package has not been published on PyPi yet, it cannot be install using pip. Cone the repo and install it yourself.
+Install the package using:
+
+.. code-block::
+
+    pip install p5control
