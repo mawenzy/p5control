@@ -1,4 +1,7 @@
 # p5control
+[![GitHub license](https://img.shields.io/github/license/mawenzy/p5control)](https://github.com/mawenzy/p5control/blob/main/LICENSE)
+[![Documentation Status](https://readthedocs.org/projects/p5control/badge/?version=latest)](https://p5control.readthedocs.io/en/latest/?badge=latest)
+https://img.shields.io/pypi/v/p5control
 
 See the docs: https://p5control.readthedocs.io/en/latest/
 
