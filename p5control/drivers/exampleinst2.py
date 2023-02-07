@@ -15,4 +15,4 @@ class ExampleInst2(ExampleInst):
 
     def _save_data(self, hdf5_path: str, array, dgw):
         path = f"{hdf5_path}/{self._name}/{time.ctime()}"
-        dgw.append(path, array, plot_config = "dset_mult")
+        dgw.append(path, array, plot_config = "grp")
