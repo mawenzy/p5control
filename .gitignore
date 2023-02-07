@@ -8,3 +8,7 @@ test*.py
 manuals/
 
 *.log
+
+# build
+p5control.egg-info
+dist

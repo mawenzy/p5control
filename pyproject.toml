@@ -1,8 +1,70 @@
 [build-system]
-# These are the assumed default build requirements from pip:
-# https://pip.pypa.io/en/stable/reference/pip/#pep-517-and-518-support
 requires = ['setuptools>=40.8.0', 'wheel']
 build-backend = 'setuptools.build_meta'
+
+[project]
+name = "p5control"
+description = "Measurement control software written in python"
+readme = {file= "README.md", content-type="text/markdown"}
+requires-python = ">=3.7"
+license = {text = "BSD-3-Clause"}
+authors = [
+  {name = "mawenzy", email = "39279779+mawenzy@users.noreply.github.com"}
+]
+maintainers = [
+  {name = "mawenzy", email = "39279779+mawenzy@users.noreply.github.com"},
+  {name = "schmampf", email = "61253184+schmampf@users.noreply.github.com"}
+]
+keywords = ["p5control", "measurement toolkit", "experimentation platform", "physics", "science", "research"]
+classifiers=[
+  'Intended Audience :: Developers',
+  'Intended Audience :: Science/Research',
+  'License :: OSI Approved :: BSD License',
+  'Natural Language :: English',
+  'Operating System :: Microsoft :: Windows',
+  'Operating System :: MacOS',
+  'Operating System :: Unix',
+  'Programming Language :: Python',
+  'Topic :: Scientific/Engineering',
+  'Topic :: Scientific/Engineering :: Physics',
+  'Topic :: Scientific/Engineering :: Visualization',
+  'Topic :: Software Development :: Libraries',
+  'Topic :: Software Development :: Libraries :: Application Frameworks',
+  'Topic :: Software Development :: Libraries :: Python Modules',
+  'Topic :: Software Development :: User Interfaces',
+  'Topic :: System :: Distributed Computing',
+]
+dependencies = [
+  'numpy >=1.23.1',
+  'rpyc >=5.3.0',
+  'h5py >=3.8.0',
+  'pyvisa >=1.13.0',
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+gui = [
+  'qtpy >=2.3.0',
+  'pyside6 >=6.4.2',
+  'pyqtgraph >=0.13.1; platform_machine != "aarch64" and platform_machine != "armv7l"',
+]
+dev = [
+  'sphinx',
+  'sphinx-copybutton',
+  'sphinx_rtd_theme',
+]
+tests = [
+  'pytest',
+  'pytest-cov'
+]
+
+[project.urls]
+homepage = "https://github.com/mawenzy/p5control"
+documentation = "https://p5control.readthedocs.io/en/latest/"
+repository = "https://github.com/mawenzy/p5control"
+
+[tool.setuptools.dynamic]
+version = {attr = "p5control.__version__"}
 
 [tool.black]
 line-length = 88
