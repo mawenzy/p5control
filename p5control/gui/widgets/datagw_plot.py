@@ -27,7 +27,7 @@ from pyqtgraph import PlotWidget
 
 from .legend import LegendView
 from .plotform import PlotForm
-from ..models import PlotConfig, DsetMultPlotConfig, LnSpcPlotConfig, BasePlotConfig
+from ..models import BasePlotConfig, PlotConfig, getPlotConfigOption
 
 class DataGatewayPlot(QSplitter):
 
@@ -135,17 +135,16 @@ class DataGatewayPlot(QSplitter):
             see :class:`PlotConfig` for options which can be used.
         """
         node = self.dgw.get(path)
-        config = None
-        if "plotConfig" in node.attrs:
-            plotConfig = node.attrs["plotConfig"]
+        if "plot_config" in node.attrs:
+            plot_config = node.attrs["plot_config"]
 
-            if plotConfig == "dset_mult":
-                config = DsetMultPlotConfig(self.dgw, path, *args, **kwargs)
+            try:
+                class_ref = getPlotConfigOption(plot_config)
+            except KeyError:
+                print("KeyError")
 
-            if plotConfig == "dset_lnspc":
-                config = LnSpcPlotConfig(self.dgw, path, *args, **kwargs)
-
-        if config is None:
+            config = class_ref(self.dgw, path, *args, **kwargs)
+        else:
             config = PlotConfig(self.dgw, path, *args, **kwargs)
 
         with self.lock:

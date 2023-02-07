@@ -26,3 +26,10 @@ from .widgets import (
 from .cleanupapp import CleanupApp
 from .guidatagw import GuiDataGateway
 from .databuffer import DataBuffer
+
+from .models import (
+    BasePlotConfig,
+    PlotConfig,
+    setPlotConfigOption,
+    setPlotConfigOption
+)

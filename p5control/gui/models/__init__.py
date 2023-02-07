@@ -1,1 +1,1 @@
-from .plotconfig import PlotConfig, DsetMultPlotConfig, LnSpcPlotConfig, BasePlotConfig
+from .plotconfig import BasePlotConfig, PlotConfig, setPlotConfigOption, getPlotConfigOption

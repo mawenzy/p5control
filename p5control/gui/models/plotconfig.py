@@ -280,3 +280,16 @@ class LnSpcPlotConfig(BasePlotConfig):
                 self._config['x_data'],
                 data[self._config["y"]][-1]
             )
+
+PLOT_CONFIGS = {
+    'std': PlotConfig,
+    'dset_mult': DsetMultPlotConfig,
+}
+
+def setPlotConfigOption(key, value):
+    if not isinstance(value, BasePlotConfig):
+        raise ValueError(f'value {value} is not an instance of {BasePlotConfig}')
+    PLOT_CONFIGS[key] = value
+
+def getPlotConfigOption(key):
+    return PLOT_CONFIGS[key]
