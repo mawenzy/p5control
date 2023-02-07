@@ -63,6 +63,9 @@ homepage = "https://github.com/mawenzy/p5control"
 documentation = "https://p5control.readthedocs.io/en/latest/"
 repository = "https://github.com/mawenzy/p5control"
 
+[project.gui-scripts]
+p5control-viewer = "p5control.gui.viewer:main"
+
 [tool.setuptools.dynamic]
 version = {attr = "p5control.__version__"}
 

@@ -2,7 +2,6 @@
 Simple GUI Application to view the contents of the data server 
 """
 import sys
-import logging
 
 from qtpy.QtCore import (
     Qt,
@@ -20,9 +19,9 @@ from qtpy.QtGui import (
     QKeySequence
 )
 
-from p5control.gui import (
-    CleanupApp,
-    GuiDataGateway,
+from .cleanupapp import CleanupApp
+from .guidatagw import GuiDataGateway
+from .widgets import (
     DataGatewayTreeView,
     ExtendableAttributesTableView,
     DatasetPropertiesTableView,
@@ -30,15 +29,16 @@ from p5control.gui import (
     DatasetDimsTableView
 )
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(
-    filename='client.log',
-    level=logging.DEBUG,
-    filemode='w', # overwrites logs every time this script is started
-    format='%(asctime)s.%(msecs)03d %(levelname)-8s %(thread)6d %(name)-30s '
-           '%(funcName)-20s %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-)
+# import logging
+# logger = logging.getLogger(__name__)
+# logging.basicConfig(
+#     filename='client.log',
+#     level=logging.DEBUG,
+#     filemode='w', # overwrites logs every time this script is started
+#     format='%(asctime)s.%(msecs)03d %(levelname)-8s %(thread)6d %(name)-30s '
+#            '%(funcName)-20s %(message)s',
+#     datefmt='%Y-%m-%d %H:%M:%S',
+# )
 
 
 class ViewerMainWindow(QMainWindow):
@@ -152,7 +152,10 @@ class ViewerMainWindow(QMainWindow):
         self.dims_view.scrollToTop()
 
 
-if __name__ == "__main__":
+def main():
+    """
+    Viewer application entry point.
+    """
     with GuiDataGateway(allow_callback=True) as dgw:
 
         app = CleanupApp()
@@ -163,3 +166,6 @@ if __name__ == "__main__":
         window.show()
 
         sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()
