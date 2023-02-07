@@ -4,7 +4,7 @@ plotDataItem
 """
 import h5py
 from qtpy.QtCore import Slot, Signal
-from qtpy.QtWidgets import QFormLayout, QWidget, QComboBox, QLineEdit
+from qtpy.QtWidgets import QFormLayout, QWidget, QComboBox, QLineEdit, QCheckBox
 from qtpy.QtGui import QColor, QIntValidator
 
 from pyqtgraph import ColorButton
@@ -29,6 +29,11 @@ class PlotForm(QWidget):
     **Signal(str)** - emitted if the config is updated, provides the id
     """
 
+    IGNORE_KEYS = ['plotDataItem', 'id', 'lock', 'dataBuffer', 'path', 'symbol', 'symbolBrush', 'symbolPen', 'symbolSize', 'data']
+    """
+    List of keys in config which should be ignored in this form
+    """
+
     def __init__(
         self,
         dgw: DataGateway,
@@ -36,16 +41,13 @@ class PlotForm(QWidget):
         **kwargs
     ):
         super().__init__(*args, **kwargs)
-        
+
         self.dgw = dgw
 
-        self.node = None
         self.config = {}
+        self.node = None
 
-        self.name = QLineEdit()
-        self.xbox = QComboBox()
-        self.ybox = QComboBox()
-        self.pen = ColorButton()
+        self._widget_pen = ColorButton()
 
         self.max_length = QLineEdit()
         self.max_length.setValidator(QIntValidator(1, 100000))
@@ -54,42 +56,45 @@ class PlotForm(QWidget):
 
         layout = QFormLayout(self)
 
-        layout.addRow("name", self.name)
-        layout.addRow("x", self.xbox)
-        layout.addRow("y", self.ybox)
-        layout.addRow("pen", self.pen)
-        layout.addRow("bufferLen", self.max_length)
-        layout.addRow("down_sample", self.down_sample)
+        self.get_widget("name", "")
 
-        # init signals
-        self.name.editingFinished.connect(self._handle_name)
-        self.xbox.activated.connect(self._handle_x)
-        self.ybox.activated.connect(self._handle_y)
-        self.pen.sigColorChanged.connect(self._handle_pen)
-        self.max_length.editingFinished.connect(self._handle_max_length)
-        self.down_sample.editingFinished.connect(self._handle_down_sample)
+        self._widget_x = QComboBox()
+        self._widget_x.activated.connect(self._handle_x)
+        layout.addRow("x", self._widget_x)
+
+        self._widget_y = QComboBox()
+        self._widget_y.activated.connect(self._handle_y)
+        layout.addRow("y", self._widget_y)
+
+        layout.addRow("pen", self._widget_pen)
+        self._widget_pen.sigColorChanged.connect(self._handle_pen)
+        
+        self.get_widget("max_length", 1, label="buffer_length")
+        self.get_widget("down_sample", 1, label="buffer_sample")
 
         self.clear()
 
     def clear(self):
         """Clear widget back to an emtpy state and disable widgets which should not be editable
         in this state."""
-        self.name.clear()
-        self.name.setEnabled(False)
+        self._widget_name.clear()
+        self._widget_name.setEnabled(False)
 
-        self.xbox.clear()
-        self.ybox.clear()
+        self._widget_x.clear()
+        self._widget_y.clear()
 
-        self.pen.setEnabled(False)
-        self.pen.setColor(QColor("gray"))
+        self._widget_pen.setEnabled(False)
+        self._widget_pen.setColor(QColor("gray"))
 
-        self.max_length.clear()
-        self.max_length.setEnabled(False)
+        self._widget_max_length.clear()
+        self._widget_max_length.setEnabled(False)
 
-        self.down_sample.clear()
-        self.down_sample.setEnabled(False)
+        self._widget_down_sample.clear()
+        self._widget_down_sample.setEnabled(False)
 
         self.config = {}
+        self.node = None
+
 
     def set_config(self, config):
         """Put the widget in a state to allow the user the edit ``config``.
@@ -97,7 +102,8 @@ class PlotForm(QWidget):
         Parameters
         ----------
         config : BasePlotConfig
-            the config which the user should be able to edit.
+            the config which the user should be able to edit. At a minimum, this needs to contain
+            the keys 'path', 'lock' and 'id'
         """
         if len(config) == 0:
             self.clear()
@@ -110,98 +116,146 @@ class PlotForm(QWidget):
 
         self.clear()
         self.config = config
+        self.node = node
+
+        for i in range(self.layout().rowCount()):
+            self.layout().setRowVisible(i, False)
 
         # now look at config an initialize the values. If values are not found, they are skipped
         # and the corresponding form element is hidden.
 
-        if "name" in config:
-            self.name.setText(config["name"])
-            self.name.setEnabled(True)
-            self.layout().setRowVisible(self.name, True)
+        for (key, value) in config.items():
+            if key in self.IGNORE_KEYS:
+                continue
+
+            widget = self.get_widget(key, value)
+
+            if widget:
+                try:
+                    getattr(self, f'_update_{key}')(value)
+                except AttributeError:
+                    self._update_value(widget, value)
+                self.layout().setRowVisible(widget, True)
+
+    def get_widget(self, key, value, label=None):
+        try:
+            return getattr(self, f'_widget_{key}')
+        except AttributeError:
+            if isinstance(value, bool):
+                # needs to be before int beause bool subclasses int
+                widget = QCheckBox()
+                if label:
+                    self.layout().addRow(label, widget)
+                else:
+                    self.layout().addRow(key, widget)
+
+                setattr(widget, '_get_value', widget.isChecked)
+                setattr(self, f'_widget_{key}', widget)
+
+                widget.stateChanged.connect(lambda: getattr(self, f"_handle_{key}"))
+                return widget
+
+            elif isinstance(value, str):
+                widget = QLineEdit()
+                if label:
+                    self.layout().addRow(label, widget)
+                else:
+                    self.layout().addRow(key, widget)
+
+                setattr(widget, '_get_value', getattr(widget, 'text'))
+                setattr(self, f'_widget_{key}', widget)
+
+                widget.editingFinished.connect(lambda: getattr(self, f"_handle_{key}"))
+                return widget
+
+            elif isinstance(value, int):
+                widget = QLineEdit()
+                widget.setValidator(QIntValidator(1, 100000))
+                if label:
+                    self.layout().addRow(label, widget)
+                else:
+                    self.layout().addRow(key, widget)
+
+                setattr(widget, '_get_value', lambda: int(getattr(widget, 'text')()))
+                setattr(self, f'_widget_{key}', widget)
+
+                widget.editingFinished.connect(lambda: getattr(self, f"_handle_{key}"))
+                return widget
+
+            print(f"skipping {key} : {value}")
+
+        return None
+
+    def _update_value(self, widget, value):
+        getattr(self, f"_update_{value.__class__.__name__}")(widget, value)
+
+    def _update_str(self, widget, value):
+        widget.setText(value)
+        widget.setEnabled(True)
+        self.layout().setRowVisible(widget, True)
+
+    def _update_int(self, widget, value):
+        widget.setText(str(value))
+        widget.setEnabled(True)
+        self.layout().setRowVisible(widget, True)
+
+    def _update_bool(self, widget, value):
+        widget.setChecked(value)
+        widget.setEnabled(True)
+        self.layout().setRowVisible(widget, True)
+
+    def _update_pen(self, value):
+        self._widget_pen.setColor(value)
+        self._widget_pen.setEnabled(True)
+        self.layout().setRowVisible(self._widget_pen, True)
+
+    def _update_x(self, value):
+        #Note: Only works with compound_names for now
+        compound_names = self.node.dtype.names
+
+        self._widget_x.addItems(compound_names)
+        self._widget_x.setCurrentText(value)
+        self.layout().setRowVisible(self._widget_x, True)
+
+    def _update_y(self, value):
+        #Note: Only works with compound_names for now
+        compound_names = self.node.dtype.names
+
+        self._widget_y.addItems(compound_names)
+        self._widget_y.setCurrentText(value)
+        self.layout().setRowVisible(self._widget_y, True)
+
+    def __getattr__(self, attr):
+        if attr.startswith("_handle_"):
+            key = attr[8:]
+            widget = getattr(self, f"_widget_{key}")
+            value = widget._get_value()
+            with self.config["lock"]:
+                self.config[key] = value
+            self.config.config_update()
+            self.updatedConfig.emit(self.config["id"])
         else:
-            self.layout().setRowVisible(self.name, False)
-
-        if "x" in config and "y" in config:
-            #Note: Only works with compound_names for now
-            compound_names = node.dtype.names
-
-            self.xbox.addItems(compound_names)
-            self.ybox.addItems(compound_names)
-
-            self.xbox.setCurrentText(config["x"])
-            self.ybox.setCurrentText(config["y"])
-
-            self.layout().setRowVisible(self.xbox, True)
-            self.layout().setRowVisible(self.ybox, True)
-        else:
-            self.layout().setRowVisible(self.xbox, False)
-            self.layout().setRowVisible(self.ybox, False)
-
-        if "pen" in config:
-            self.pen.setColor(config["pen"])
-            self.pen.setEnabled(True)
-            self.layout().setRowVisible(self.pen, True)
-        else:
-            self.layout().setRowVisible(self.pen, False)
-
-        if "max_length" in config:
-            self.max_length.setText(str(config["dataBuffer"].max_length))
-            self.max_length.setEnabled(True)
-            self.layout().setRowVisible(self.max_length, True)
-        else:
-            self.layout().setRowVisible(self.max_length, False)
-
-        if "down_sample" in config:
-            self.down_sample.setText(str(config["dataBuffer"].down_sample))
-            self.down_sample.setEnabled(True)
-            self.layout().setRowVisible(self.down_sample, True)
-        else:
-            self.layout().setRowVisible(self.down_sample, False)
+            return self.__getattribute__(attr)
 
     @Slot(object)
     def _handle_pen(self, color: ColorButton):
         color = color.color()
         # the `sigColorChanged` is emitted when putting the widget in the clear state, but in that
         # case we do not want to actually do something
-        if "lock" in self.config and self.pen.isEnabled():
+        if "lock" in self.config and self._widget_pen.isEnabled():
             with self.config["lock"]:
                 self.config["pen"] = color
                 self.config["plotDataItem"].setPen(color)
             self.updatedConfig.emit(self.config["id"])
 
-    @Slot()
-    def _handle_name(self):
-        text = self.name.text()
-        with self.config["lock"]:
-            self.config["name"] = text
-        self.updatedConfig.emit(self.config["id"])
-
-    @Slot()
-    def _handle_max_length(self):
-        text = self.max_length.text()
-        with self.config["lock"]:
-            self.config["dataBuffer"].reload(
-                max_length = int(text)
-            )
-        self.updatedConfig.emit(self.config["id"])
-
-    @Slot()
-    def _handle_down_sample(self):
-        text = self.down_sample.text()
-        with self.config["lock"]:
-            self.config["dataBuffer"].reload(
-                down_sample = int(text)
-            )
-        self.updatedConfig.emit(self.config["id"])
-
     def _handle_x(self, index):
-        text = self.xbox.itemText(index)
+        text = self._widget_x.itemText(index)
         with self.config["lock"]:
             self.config["x"] = text
         self.updatedConfig.emit(self.config["id"])
 
     def _handle_y(self, index):
-        text = self.ybox.itemText(index)
+        text = self._widget_y.itemText(index)
         with self.config["lock"]:
             self.config["y"] = text
         self.updatedConfig.emit(self.config["id"])
