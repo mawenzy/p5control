@@ -46,8 +46,8 @@ class KeysightB2962A(BaseDriver):
             self._inst.write(":sour1:func:mode volt")
             self._inst.write(":sour2:func:mode volt")
 
-            self._inst.write(":sour1:volt 1")
-            self._inst.write(":sour2:volt -1")
+            self._inst.write(":sour1:volt 0")
+            self._inst.write(":sour2:volt 0")
 
             self._inst.write(f":SENSe1:CURRent:DC:PROTection:LEVel:BOTH {max_current}")
             self._inst.write(f":SENSe2:CURRent:DC:PROTection:LEVel:BOTH {max_current}")
@@ -109,8 +109,6 @@ class KeysightB2962A(BaseDriver):
             self._inst.write(f":trig2:tran:coun {sweep_counts}")
             self._inst.write(f":trig1:tran:sour aint")
             self._inst.write(f":trig2:tran:sour aint")
-            
-
             
             error = self._inst.query(":SYSTem:ERRor:CODE:ALL?")
             if error!='+0':
