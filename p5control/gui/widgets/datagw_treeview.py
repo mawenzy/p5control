@@ -2,11 +2,11 @@
 This file defines the class DataGatewayTreeView, which is a Widget which shows
 the directory structure of the hdf5 file behind the gateway in a customized `QTreeView`.
 """
-from typing import Union, Iterable
+from typing import Union, Iterable, Optional
 
 import h5py
 
-from qtpy.QtCore import Qt, Signal, Slot, QModelIndex, QItemSelection, QMimeData, QPoint
+from qtpy.QtCore import Qt, Signal, Slot, QModelIndex, QItemSelection, QMimeData, QPoint, QAbstractItemModel, QObject, QThread
 from qtpy.QtWidgets import QTreeView, QAbstractItemView, QMenu
 from qtpy.QtGui import QStandardItemModel, QStandardItem, QIcon, QAction
 
@@ -252,6 +252,112 @@ class DataGatewayTreeModel(QStandardItemModel):
 
         return data
 
+class Worker(QObject):
+    
+    new_node = Signal(str, str, bool)
+
+    def __init__(self, dgw, parent=None):
+        super().__init__(parent)
+        self.dgw = dgw
+
+    def get_children(self, path, children_names):
+        for name, node in self.dgw.get(path).items():
+            if name in children_names:
+                continue
+
+            if isinstance(node, h5py.Group):
+                print("emitting", path, name, True)
+                self.new_node.emit(path, name, True)
+            else:
+                print("emitting", path, name, False)
+                self.new_node.emit(path, name, False)
+
+class AsyncDataGatewayTableModel(QStandardItemModel):
+
+    update_children_requested = Signal(str, list)
+
+    def __init__(
+        self,
+        dgw: DataGateway,
+        parent: Optional[QObject] = None
+    ) -> None:
+        super().__init__(parent)
+
+        self.dgw = dgw
+
+        self.worker_thread = QThread()
+        self.worker = Worker(self.dgw)
+        self.worker.moveToThread(self.worker_thread)
+
+    
+        self.worker.new_node.connect(self.add_node)
+        self.update_children_requested.connect(self.worker.get_children)
+
+        self.worker_thread.start()
+
+        self.invisibleRootItem().setData("/", Qt.UserRole)
+        self.invisibleRootItem().setData(True, Qt.UserRole+1)
+
+        self.update_children_requested.emit("/", [])
+
+
+    def add_node(self, parent_path, name, is_group):
+        path = f"/{name}" if parent_path == "/" else f"{parent_path}/{name}"
+
+        tree_item = QStandardItem(name)
+        tree_item.setData(path, Qt.UserRole)
+        tree_item.setData(is_group, Qt.UserRole + 1)
+
+        if is_group:
+            tree_item.setIcon(QIcon('icons:folder.svg'))
+        else:
+            tree_item.setIcon(QIcon('icons:dataset.svg'))
+
+        parent_indexes = self.match(self.index(0, 0), Qt.UserRole, parent_path, hits=1, flags=Qt.MatchExactly | Qt.MatchRecursive)
+
+        if len(parent_indexes) == 0:
+            parent = self.invisibleRootItem()
+        else:
+            parent = self.itemFromIndex(parent_indexes[0])
+
+        parent.appendRow([tree_item])
+
+        if is_group:
+            self.update_children_requested.emit(path, [])
+
+    def handle_expanded(self, index):
+        item = self.itemFromIndex(index)
+
+        if not item.hasChildren():
+            return
+        
+        item.setIcon(QIcon('icons:folder-open.svg'))
+
+    def handle_collapsed(self, index):
+        item = self.itemFromIndex(index)
+        item.setIcon(QIcon('icons:folder.svg'))
+
+    def visit_item(self, item):
+        # skip datasets
+        if not item.data(Qt.UserRole + 1):
+            return
+
+        path = item.data(Qt.UserRole)
+
+        child_names = []
+        for row in range(item.rowCount()):
+            child_item = item.child(row, 0)
+            child_names.append(child_item.text())
+
+            if child_item.data(Qt.UserRole + 1) == True:
+                self.visit_item(child_item)
+
+        self.update_children_requested.emit(path, child_names)
+
+
+    def update_data(self):
+        self.visit_item(self.invisibleRootItem())
+
 
 class DataGatewayTreeView(QTreeView):
     """
@@ -294,7 +400,8 @@ class DataGatewayTreeView(QTreeView):
         self.dgw = dgw
 
         # set up the file tree view
-        self.tree_model = DataGatewayTreeModel(self.dgw)
+        # self.tree_model = DataGatewayTreeModel(self.dgw)
+        self.tree_model = AsyncDataGatewayTableModel(self.dgw)
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.setHeaderHidden(True)
