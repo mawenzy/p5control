@@ -46,13 +46,14 @@ class KeysightB2962A(BaseDriver):
             self._inst.write(":sour1:func:mode volt")
             self._inst.write(":sour2:func:mode volt")
 
-            self._inst.write(":sour1:volt 0")
-            self._inst.write(":sour2:volt 0")
+            self._inst.write(":sour1:volt 1")
+            self._inst.write(":sour2:volt -1")
 
             self._inst.write(f":SENSe1:CURRent:DC:PROTection:LEVel:BOTH {max_current}")
             self._inst.write(f":SENSe2:CURRent:DC:PROTection:LEVel:BOTH {max_current}")
 
-            self._inst.write(":outp on")
+            self._inst.write(":outp1 on")
+            self._inst.write(":outp2 on")
 
             error = self._inst.query(":SYSTem:ERRor:CODE:ALL?")
             if error!='+0':
@@ -71,45 +72,51 @@ class KeysightB2962A(BaseDriver):
 
         if self._setting != "sweep":
             _half_amplitude = amplitude / 2
-            _half_frequency = frequency / 2
+            _half_time = .5/frequency
             self._inst.write("*RST")
 
             self._inst.write(f":sour1:func:mode volt")
             self._inst.write(f":sour2:func:mode volt")
-            self._inst.write(f":sour1:volt {-_half_amplitude}")
+
+            self._inst.write(f":sour1:volt {-1. * _half_amplitude}")
             self._inst.write(f":sour2:volt {_half_amplitude}")
+
+            self._inst.write(f":SENSe1:CURRent:DC:PROTection:LEVel:BOTH {max_current}")
+            self._inst.write(f":SENSe2:CURRent:DC:PROTection:LEVel:BOTH {max_current}")
+
+            self._inst.write(":outp1 on")
+            self._inst.write(":outp2 on")
+
             self._inst.write(f":sour1:volt:mode arb")
-            self._inst.write(f":sour2:volt:mode arb")
             self._inst.write(f":sour1:arb:func tri")
-            self._inst.write(f":sour2:arb:func tri")
-            self._inst.write(f":sour1:arb:volt:tri:star {-_half_amplitude}")
-            self._inst.write(f":sour2:arb:volt:tri:star {_half_amplitude}")
+            self._inst.write(f":sour1:arb:volt:tri:star {-1. * _half_amplitude}")
             self._inst.write(f":sour1:arb:volt:tri:top {_half_amplitude}")
-            self._inst.write(f":sour2:arb:volt:tri:top {-_half_amplitude}")
             self._inst.write(f":sour1:arb:volt:tri:star:time 0")
-            self._inst.write(f":sour2:arb:volt:tri:star:time 0")
-            self._inst.write(f":sour1:arb:volt:tri:rtim {_half_frequency}")
-            self._inst.write(f":sour2:arb:volt:tri:rtim {_half_frequency}")
-            self._inst.write(f":sour1:arb:volt:tri:ftim {_half_frequency}")
-            self._inst.write(f":sour2:arb:volt:tri:ftim {_half_frequency}")
             self._inst.write(f":sour1:arb:volt:tri:end:time 0")
+            self._inst.write(f":sour1:arb:volt:tri:rtim {_half_time}")
+            self._inst.write(f":sour1:arb:volt:tri:ftim {_half_time}")
+
+            self._inst.write(f":sour2:volt:mode arb")
+            self._inst.write(f":sour2:arb:func tri")
+            self._inst.write(f":sour2:arb:volt:tri:star {_half_amplitude}")
+            self._inst.write(f":sour2:arb:volt:tri:top {-1. * _half_amplitude}")
+            self._inst.write(f":sour2:arb:volt:tri:star:time 0")
             self._inst.write(f":sour2:arb:volt:tri:end:time 0")
+            self._inst.write(f":sour2:arb:volt:tri:rtim {_half_time}")
+            self._inst.write(f":sour2:arb:volt:tri:ftim {_half_time}")
             
             self._inst.write(f":trig1:tran:coun {sweep_counts}")
             self._inst.write(f":trig2:tran:coun {sweep_counts}")
             self._inst.write(f":trig1:tran:sour aint")
             self._inst.write(f":trig2:tran:sour aint")
             
-            self._inst.write(f":SENSe1:CURRent:DC:PROTection:LEVel:BOTH {max_current}")
-            self._inst.write(f":SENSe2:CURRent:DC:PROTection:LEVel:BOTH {max_current}")
 
-            self._inst.write(":outp on")
             
             error = self._inst.query(":SYSTem:ERRor:CODE:ALL?")
             if error!='+0':
                 logger.error(f'{self._name}.setup_sweep_measurement() ERROR: {error}')
             
-            self._setting = "offset"
+            self._setting = "sweep"
             logger.debug(f'{self._name}.setup_sweep_measurement()')
         else:
             logger.debug(f'{self._name} already setup for sweep measurement.')
