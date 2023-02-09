@@ -128,9 +128,9 @@ class MeasurementControl(QWidget):
             self.name.setEnabled(True)
 
         measure = self.gw.measure(self.name.text())
-        if playing and not measure.running():
+        if playing and not measure.running:
             measure.start()
-        elif not playing and measure.running():
+        elif not playing and measure.running:
             measure.stop()
 
         self.btn.setEnabled(True)
@@ -141,7 +141,7 @@ class MeasurementControl(QWidget):
         reading its state into this widget.
         """
         measure = self.gw.measure()
-        self.last_name = measure.name()
+        self.last_name = measure.name
 
-        self.name.setText(measure.name())
-        self.btn.set_playing(measure.running())
+        self.name.setText(measure.name)
+        self.btn.set_playing(measure.running)

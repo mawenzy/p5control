@@ -33,14 +33,14 @@ class DataServer(BaseServer):
         if not filename:
             # generate new filename
             self._filename = next(new_filename_generator(DEFAULT_DATA_DIR.joinpath("session")))
-            logger.info(f'no filename provided, generated filename "%s"', self._filename)
+            logger.info('no filename provided, generated filename "%s"', self._filename)
 
             # make sure parent folder exitsts, if not create it
             Path(self._filename).parent.mkdir(parents=True, exist_ok=True)
         else:
             self._filename = filename
-        
-        logger.info(f'DataServer using file "%s"', self._filename)
+
+        logger.info('DataServer using file "%s"', self._filename)
 
         self._handler = None
 
@@ -58,17 +58,17 @@ class DataServer(BaseServer):
         self.RPYC_SERVER_STOP_EVENT.set()
 
     def start(self):
-        """Start the RPyC server"""
+        # start the RPyC server
         super().start()
 
-        """Open hdf5 file"""
+        # open hdf5 file
         self._handler = HDF5FileInterface(self._filename)
 
     def stop(self):
-        """Close hdf5 file"""
+        # close hdf5 file
         self._handler.close()
 
-        """Stop the RPyC server"""
+        # stop the RPyC server
         super().stop()
 
     """
@@ -97,6 +97,3 @@ class DataServer(BaseServer):
         except AttributeError:
             # let default python implementation handle all other cases
             return self.__getattribute__(attr)
-
-
-    

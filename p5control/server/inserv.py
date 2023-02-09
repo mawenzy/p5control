@@ -1,3 +1,7 @@
+"""
+This module defines the instrument server, which is a rpyc service loading device drivers and
+exposing them to clients.
+"""
 import threading
 import logging
 from typing import Dict, Any, List
@@ -19,12 +23,13 @@ class InstrumentServer(BaseServer):
     """
 
     def __init__(
-        self, 
+        self,
         port: int = INSERV_DEFAULT_PORT,
         data_server_port: int = DATASERV_DEFAULT_PORT,
         data_server_filename: str = None,
     ):
-        logger.debug('port %d, data port %d, data file %s', port, data_server_port, data_server_filename)
+        logger.debug('port %d, data port %d, data file %s',
+                        port, data_server_port, data_server_filename)
         super().__init__(port)
 
         self._devices: Dict[str, Any] = {}
@@ -57,7 +62,7 @@ class InstrumentServer(BaseServer):
         """
         if name in self._devices:
             raise InstrumentServerError(f'device with name "{name}" already exists.')
-        
+
         # create instance of the device
         try:
             instance = class_ref(name, *args, **kwargs)
@@ -66,7 +71,7 @@ class InstrumentServer(BaseServer):
                 f'Failed to create an instance of device "{name}" of class'
                 f' "{class_ref}"',
             ) from exc
-    
+
         # save the device and config info
         config = {
             'class_ref': class_ref,
@@ -89,7 +94,7 @@ class InstrumentServer(BaseServer):
             dev, _ = self._devices.pop(name)
         except Exception as exc:
             raise InstrumentServerError(f'Failed deleting device "{name}"') from exc
-        
+
         # exit driver
         try:
             dev.close()
@@ -141,7 +146,7 @@ class InstrumentServer(BaseServer):
         logger.debug('stopping instrument server and associated threads')
 
         # stop an ongoing measurement
-        if self._measurement and self._measurement._running:
+        if self._measurement and self._measurement.running:
             logger.debug('stopping running measurement')
             self._measurement.stop()
 
@@ -177,7 +182,7 @@ class InstrumentServer(BaseServer):
         else:
             # let default python implementation handle all other cases
             return self.__getattribute__(attr)
-        
+
     def measure(
         self,
         name: str = None,
@@ -220,14 +225,14 @@ class InstrumentServer(BaseServer):
         odev = set(self._measurement._devices.keys())
         same_devs = ndev-odev == set() and odev-ndev == set()
 
-        if ((name and name == self._measurement.name()) or name is None) and same_devs:
+        if ((name and name == self._measurement.name) or name is None) and same_devs:
             # return existing instrument if same devs and either
             # 1: same name  or
             # 2: name is None
             logger.info("returning existing measurement.")
             return self._measurement
 
-        if self._measurement.running():
+        if self._measurement.running:
             raise MeasurementError(
                 'Can\'t create new measurement because the old one is still runing.'
             )

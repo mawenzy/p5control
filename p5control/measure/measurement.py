@@ -1,5 +1,6 @@
 """
-Class to facilitate a measurement, e.g. using a script with a context manager. For a brief introduction, take a look at the sample project:
+Class to facilitate a measurement, e.g. using a script with a context manager. For a brief
+introduction, take a look at the sample project:
 
 * :ref:`example_measurement`
 """
@@ -45,7 +46,7 @@ class Measurement:
 
         self._name = name if name else next(exp_name_generator)
         self._path = f"{MEASUREMENT_BASE_PATH}/{self._name}"
-        logger.info(f'measurement with name "{self._name}" and path "{self._path}"')
+        logger.info('measurement with name "%s" and path "%s"', self._name, self._path)
 
         # amount of devices
         cnt = len(self._devices)
@@ -62,20 +63,20 @@ class Measurement:
     def start(self):
         """Start measurement by starting all the separate measuring threads of the devices.
         
-        Blocks until all have run their setup and then releases them at the same time."""  
+        Blocks until all have run their setup and then releases them at the same time."""
         if self._running:
             raise MeasurementError(
                 'Can\'t start the measurement because it is already running.'
             )
-        
-        logger.info(f'starting measurement {self._name}')
+
+        logger.info('starting measurement "%s"', self._name)
 
         # start threads
         for dev, _ in self._devices.values():
             thread = threading.Thread(
-                    target=dev._measuring_thread, 
-                    args=[self.STOP_EVENT, 
-                          self.entry_barrier, 
+                    target=dev._measuring_thread,
+                    args=[self.STOP_EVENT,
+                          self.entry_barrier,
                           self.exit_barrier,
                           self._path],
                     )
@@ -120,14 +121,17 @@ class Measurement:
         """Pyton context manager teardown"""
         self.stop()
 
+    @property
     def path(self) -> str:
         """Get the path to the folder where the results will be stored."""
         return self._path
 
+    @property
     def name(self) -> str:
         """Name of the measurement."""
         return self._name
 
+    @property
     def running(self) -> bool:
         """Whether the measurement is currently running."""
         return self._running
