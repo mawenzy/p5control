@@ -420,6 +420,28 @@ class HDF5FileInterface():
         """
         Return an object from the hdf5 file, specified with path. Use this to access its children
         or attributes. If you want to get data from a datset, use :meth:`get_data`
+        
+        Parameters
+        ----------
+        path : str
+            path in the hdf5 file
         """
         logger.debug('path "%s"', path)
         return self._f[path]
+
+
+    def get_keys(
+        self,
+        path: str,
+    ):
+        """
+        Return the keys of the group specified with path. Returns a tuple containing the strings
+        to minimize the rpyc requests.
+
+        Parameters
+        ----------
+        path : str
+            path in the hdf5 file
+        """
+        # returning tuple such that rpyc does not generate a netref but directly transfers the data
+        return tuple(self._f[path].keys())

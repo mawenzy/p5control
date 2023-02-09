@@ -2,178 +2,158 @@
 This file defines the class DataGatewayTreeView, which is a Widget which shows
 the directory structure of the hdf5 file behind the gateway in a customized `QTreeView`.
 """
-from typing import Union, Iterable, Optional
+from typing import Iterable, Optional, List
 
 import h5py
 
-from qtpy.QtCore import Qt, Signal, Slot, QModelIndex, QItemSelection, QMimeData, QPoint, QAbstractItemModel, QObject, QThread
+from qtpy.QtCore import Qt, Signal, Slot, QModelIndex, QItemSelection, QMimeData, QPoint, QObject
 from qtpy.QtWidgets import QTreeView, QAbstractItemView, QMenu
 from qtpy.QtGui import QStandardItemModel, QStandardItem, QIcon, QAction
 
+from ..rpycthread import rpyc_thread
 from ...gateway import DataGateway
+
+class _DataGatewayTreeModelWorker(QObject):
+    """
+    Worker which has a slot to trigger it to get the children of a group on the data server
+    and emits a signal if new nodes are found.
+    """
+
+    new_node = Signal(str, str, bool)
+    """
+    **Signal(str, str, bool)** - emitted if a new node should be added to the treeview model.
+    Comes with path of parent, name of the node and bool whether node is a group. 
+    """
+
+    def __init__(self, dgw, parent=None):
+        super().__init__(parent)
+        self.dgw = dgw
+
+    def get_children(
+        self,
+        path: str,
+        children_names: List[str]
+    ):
+        """
+        Request the children for a group in the hdf5 file and emit ``new_node`` if there are new
+        ones. This method is optimized to minimize the amount of requests send.
+
+        Parameters
+        ----------
+        path : str
+            hdf5 path of the group
+        children_names : List[str]
+            names of the children which already exist and should not be added again
+        """
+        # function call which returns tuple -> 3 requests
+        # converted to list for .remove in next step
+        names = list(self.dgw.get_keys(path))
+
+        for name in children_names:
+            names.remove(name)
+
+        if len(names) > 0:
+            # create netref this function only once
+            func_get = self.dgw.get
+
+            for name in names:
+                node = func_get(f"{path}/{name}")
+
+                if isinstance(node, h5py.Group):
+                    self.new_node.emit(path, name, True)
+                else:
+                    self.new_node.emit(path, name, False)
 
 class DataGatewayTreeModel(QStandardItemModel):
     """
-    QStandardItemModel which holds the directory structure of the hdf5 file
-    on the DataServer.
-
-    The data tree is only ever populated one layer deeper than what
-    is expanded by the user and further children are loaded after expansion.
-
-    Note that a node has to have children when it is first seen on screen
-    such that Qt automatically adds the ability to expand it.
-
-    Each item has data stored with it:
-
-        -   Qt.UserRole     path
-        -   Qt.UserRole+1   "h5py.Group" or "h5py.Dataset"
+    Model for the TreeView of the data server hdf5 contents
 
     Parameters
     ----------
     dgw : DataGateway
         gateway to the data server
+    parent : Optional[QObject]
+        parent qt object
     """
+
+    update_children = Signal(str, list)
+    """
+    **Signal(str, list)** - emitted if the children should be updated, with path and an existing
+    list of children names provided.
+    """
+
     def __init__(
         self,
-        dgw: DataGateway
-    ):
-        super().__init__()
+        dgw: DataGateway,
+        parent: Optional[QObject] = None
+    ) -> None:
+        super().__init__(parent)
 
         self.dgw = dgw
-        self.init_model()
 
-    def init_model(self):
-        """Initialize the item model two layers deep."""
-        self.setHorizontalHeaderLabels(['Objects'])
+        self.worker = _DataGatewayTreeModelWorker(self.dgw)
+        self.worker.moveToThread(rpyc_thread)
+
+        self.worker.new_node.connect(self.add_node)
+        self.update_children.connect(self.worker.get_children)
+
         self.invisibleRootItem().setData("/", Qt.UserRole)
-        self.invisibleRootItem().setData("h5py.Group", Qt.UserRole+1)
+        self.invisibleRootItem().setData(True, Qt.UserRole+1)
 
-        # top level nodes
-        for node in self.dgw.get("/").values():
-            parent = self.add_node(self, node)
-
-            # add children if they are groups so they can be expanded
-            if isinstance(node, h5py.Group):
-                self.update_children(parent)
+        self.update_children.emit("/", [])
 
     def add_node(
         self,
-        parent_item: QStandardItem,
-        node: Union[h5py.Group, h5py.Dataset]
+        parent_path: str,
+        name: str,
+        is_group: bool
     ):
         """
         Add node to the tree, by creating a corresponding `QStandardItem` for the node and
-        appending it in a new row to parent_item.
+        appending it in a new row to parent_item. If node is a group, emits the
+        ``update_children`` signal for this node.
 
         Parameters
         ----------
-        parent_item : QStandardItem
-            the parent item the node should be added to
-        node : h5py.Group, h5py.Dataset
-            the node in the hdf5 path which is added to the model
+        parent_path : str
+            the parent path the node should be added to
+        name : str
+            name of the node
+        is_groupe : bool
+            True -> group, False -> dataset
         """
-        node_path = node.name
-        node_name = node_path.split('/')[-1]
+        path = f"/{name}" if parent_path == "/" else f"{parent_path}/{name}"
 
-        if not node_name:
-            node_name = node_path
-
-        tree_item = QStandardItem(node_name)
-        tree_item.setData(node_path, Qt.UserRole)
-
-        if isinstance(node, h5py.Dataset):
-            tree_item.setIcon(QIcon('icons:dataset.svg'))
-            tree_item.setData("h5py.Dataset", Qt.UserRole+1)
-        elif isinstance(node, h5py.Group):
-            tree_item.setIcon(QIcon('icons:folder.svg'))
-            tree_item.setData("h5py.Group", Qt.UserRole+1)
-
-        parent_item.appendRow([tree_item])
-
-        return tree_item
-
-    def visit_update_children(self, item):
-        """
-        Update children for the item and recursively for all children. Newly added children
-        are not visited, but their children are also added.
-
-        Parameters
-        ----------
-        item : QStandardItem
-        """
-        try:
-            new_items = self.update_children(item)
-        except KeyError:
-            # model in a broken state, should only happen if the DataServer
-            # is new and does not have the same data as the old one
-            self.removeRows(0, self.rowCount())
-            self.init_model()
+        # check if node with path is already present
+        if len(self.match(self.index(0, 0), Qt.UserRole, path, hits=1,
+                            flags=Qt.MatchExactly | Qt.MatchRecursive)) != 0:
             return
 
-        # update children
-        if item.hasChildren():
-            for row in range(item.rowCount()):
-                child_item = item.child(row, 0)
+        tree_item = QStandardItem(name)
+        tree_item.setData(path, Qt.UserRole)
+        tree_item.setData(is_group, Qt.UserRole + 1)
 
-                if not child_item:
-                    continue
+        if is_group:
+            tree_item.setIcon(QIcon('icons:folder.svg'))
+        else:
+            tree_item.setIcon(QIcon('icons:dataset.svg'))
 
-                # recursively update child_item
-                if child_item.hasChildren():
-                    self.visit_update_children(child_item)
-                # if the item is new, it does not have children
-                # but we need to add them so QTreeView correctly
-                # lets us expand the folder
-                elif child_item in new_items:
-                    self.update_children(child_item)
+        parent_indexes = self.match(self.index(0, 0), Qt.UserRole, parent_path, hits=1,
+                                    flags=Qt.MatchExactly | Qt.MatchRecursive)
 
-    def update_children(self, item):
-        """
-        Adds all the children from the dataserver which item
-        does not already have
+        if len(parent_indexes) == 0:
+            parent = self.invisibleRootItem()
+        else:
+            parent = self.itemFromIndex(parent_indexes[0])
 
-        Parameters
-        ----------
-        item : QStandardItem
+        parent.appendRow([tree_item])
 
-        Returns
-        -------
-        the new items: List[items]
-        """
-        item_path = item.data(Qt.UserRole)
-        item_type = item.data(Qt.UserRole+1)
-
-        # skip datasets
-        if item_type == "h5py.Group":
-            names = []
-            # collect the names of all the existing children
-            if item.hasChildren():
-                for row in range(item.rowCount()):
-                    child_item = item.child(row, 0)
-
-                    if not child_item:
-                        continue
-
-                    path = child_item.data(Qt.UserRole)
-                    name = path.split('/')[-1]
-
-                    names.append(name)
-
-            new_items = []
-            # iterate over children on data server
-            for name in self.dgw.get(item_path).keys():
-                # skip for children which already exist
-                if name in names:
-                    continue
-
-                node = self.add_node(item, self.dgw.get(f"{item_path}/{name}"))
-                new_items.append(node)
-
-            return new_items
+        if is_group:
+            self.update_children.emit(path, [])
 
     def handle_expanded(self, index):
         """
-        Update folder icon to expanded and update children.
+        Update folder icon to expanded.
 
         Parameters
         ----------
@@ -181,37 +161,7 @@ class DataGatewayTreeModel(QStandardItemModel):
             the index of the item which is being expanded
         """
         item = self.itemFromIndex(index)
-        try:
-            self.update_children(item)
-        except KeyError:
-            # model in a broken state, should only happen if the DataServer
-            # is new and does not have the same data as the old one
-            self.removeRows(0, self.rowCount())
-            self.init_model()
-            return
-
-        if not item.hasChildren():
-            return
-
         item.setIcon(QIcon('icons:folder-open.svg'))
-
-        # iterate over the children, such that their children
-        # are added to the tree such that qt allows the user
-        # to expand the TreeView
-        for row in range(item.rowCount()):
-            child_item = item.child(row, 0)
-
-            if not child_item or child_item.hasChildren():
-                continue
-
-            try:
-                self.update_children(child_item)
-            except KeyError:
-                # model in a broken state, should only happen if the DataServer
-                # is new and does not have the same data as the old one
-                self.removeRows(0, self.rowCount())
-                self.init_model()
-                return
 
     def handle_collapsed(self, index):
         """
@@ -225,11 +175,35 @@ class DataGatewayTreeModel(QStandardItemModel):
         item = self.itemFromIndex(index)
         item.setIcon(QIcon('icons:folder.svg'))
 
+    def visit_item(self, item):
+        """
+        Update children for the item and recursively for all children
+
+        Parameters
+        ----------
+        item : QStandardItem
+        """
+        # skip datasets
+        if not item.data(Qt.UserRole + 1):
+            return
+
+        path = item.data(Qt.UserRole)
+
+        child_names = []
+        for row in range(item.rowCount()):
+            child_item = item.child(row, 0)
+            child_names.append(child_item.text())
+
+            if child_item.data(Qt.UserRole + 1):
+                self.visit_item(child_item)
+
+        self.update_children.emit(path, child_names)
+
     def update_data(self):
         """
         Update all expanded nodes with children which might have been added to the dataserver.
         """
-        self.visit_update_children(self.invisibleRootItem())
+        self.visit_item(self.invisibleRootItem())
 
     def supportedDragActions(self) -> Qt.DropAction:
         """
@@ -251,113 +225,6 @@ class DataGatewayTreeModel(QStandardItemModel):
         data.setText(path)
 
         return data
-
-class Worker(QObject):
-    
-    new_node = Signal(str, str, bool)
-
-    def __init__(self, dgw, parent=None):
-        super().__init__(parent)
-        self.dgw = dgw
-
-    def get_children(self, path, children_names):
-        for name, node in self.dgw.get(path).items():
-            if name in children_names:
-                continue
-
-            if isinstance(node, h5py.Group):
-                print("emitting", path, name, True)
-                self.new_node.emit(path, name, True)
-            else:
-                print("emitting", path, name, False)
-                self.new_node.emit(path, name, False)
-
-class AsyncDataGatewayTableModel(QStandardItemModel):
-
-    update_children_requested = Signal(str, list)
-
-    def __init__(
-        self,
-        dgw: DataGateway,
-        parent: Optional[QObject] = None
-    ) -> None:
-        super().__init__(parent)
-
-        self.dgw = dgw
-
-        self.worker_thread = QThread()
-        self.worker = Worker(self.dgw)
-        self.worker.moveToThread(self.worker_thread)
-
-    
-        self.worker.new_node.connect(self.add_node)
-        self.update_children_requested.connect(self.worker.get_children)
-
-        self.worker_thread.start()
-
-        self.invisibleRootItem().setData("/", Qt.UserRole)
-        self.invisibleRootItem().setData(True, Qt.UserRole+1)
-
-        self.update_children_requested.emit("/", [])
-
-
-    def add_node(self, parent_path, name, is_group):
-        path = f"/{name}" if parent_path == "/" else f"{parent_path}/{name}"
-
-        tree_item = QStandardItem(name)
-        tree_item.setData(path, Qt.UserRole)
-        tree_item.setData(is_group, Qt.UserRole + 1)
-
-        if is_group:
-            tree_item.setIcon(QIcon('icons:folder.svg'))
-        else:
-            tree_item.setIcon(QIcon('icons:dataset.svg'))
-
-        parent_indexes = self.match(self.index(0, 0), Qt.UserRole, parent_path, hits=1, flags=Qt.MatchExactly | Qt.MatchRecursive)
-
-        if len(parent_indexes) == 0:
-            parent = self.invisibleRootItem()
-        else:
-            parent = self.itemFromIndex(parent_indexes[0])
-
-        parent.appendRow([tree_item])
-
-        if is_group:
-            self.update_children_requested.emit(path, [])
-
-    def handle_expanded(self, index):
-        item = self.itemFromIndex(index)
-
-        if not item.hasChildren():
-            return
-        
-        item.setIcon(QIcon('icons:folder-open.svg'))
-
-    def handle_collapsed(self, index):
-        item = self.itemFromIndex(index)
-        item.setIcon(QIcon('icons:folder.svg'))
-
-    def visit_item(self, item):
-        # skip datasets
-        if not item.data(Qt.UserRole + 1):
-            return
-
-        path = item.data(Qt.UserRole)
-
-        child_names = []
-        for row in range(item.rowCount()):
-            child_item = item.child(row, 0)
-            child_names.append(child_item.text())
-
-            if child_item.data(Qt.UserRole + 1) == True:
-                self.visit_item(child_item)
-
-        self.update_children_requested.emit(path, child_names)
-
-
-    def update_data(self):
-        self.visit_item(self.invisibleRootItem())
-
 
 class DataGatewayTreeView(QTreeView):
     """
@@ -400,8 +267,7 @@ class DataGatewayTreeView(QTreeView):
         self.dgw = dgw
 
         # set up the file tree view
-        # self.tree_model = DataGatewayTreeModel(self.dgw)
-        self.tree_model = AsyncDataGatewayTableModel(self.dgw)
+        self.tree_model = DataGatewayTreeModel(self.dgw)
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.setHeaderHidden(True)
@@ -423,10 +289,10 @@ class DataGatewayTreeView(QTreeView):
         if customContextMenu:
             # enable custom context menu
             self.setContextMenuPolicy(Qt.CustomContextMenu)
-            self.customContextMenuRequested.connect(self._onCustomContextMenu)
+            self.customContextMenuRequested.connect(self._on_custom_context_menu)
 
     @Slot(QPoint)
-    def _onCustomContextMenu(
+    def _on_custom_context_menu(
         self,
         point: QPoint
     ):
@@ -460,9 +326,9 @@ class DataGatewayTreeView(QTreeView):
         item = self.model().itemFromIndex(index)
 
         item_path = item.data(Qt.UserRole)
-        item_type = item.data(Qt.UserRole+1)
+        is_group = item.data(Qt.UserRole + 1)
 
-        if item_type == "h5py.Dataset":
+        if not is_group:
             self.doubleClickedDataset.emit(item_path)
 
     @Slot(QItemSelection, QItemSelection)

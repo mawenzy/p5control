@@ -12,6 +12,8 @@ from qtpy.QtWidgets import QApplication
 
 from pyqtgraph import _connectCleanup, setConfigOption
 
+from .rpycthread import rpyc_thread
+
 logger = logging.getLogger(__name__)
 
 class CleanupApp(QApplication):
@@ -39,6 +41,8 @@ class CleanupApp(QApplication):
         setConfigOption("background", "w")
         setConfigOption("foreground", "k")
 
+        rpyc_thread.start()
+
         self.aboutToQuit.connect(self.call_cleanup)
 
     def exec(self, *args, **kwargs):
@@ -65,6 +69,9 @@ class CleanupApp(QApplication):
         method ``cleanup`` is called. This can as an example be use to remove callbacks
         when closing the gui.
         """
+        rpyc_thread.quit()
+        rpyc_thread.wait()
+
         for widget in self.allWidgets():
             try:
                 widget.cleanup()
