@@ -10,20 +10,19 @@ class ValueBoxForm(QWidget):
         self,
         dgw: DataGateway,
         rows=None,
-        *args,
         **kwargs
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
         self.dgw = dgw
 
         self.layout = QFormLayout()
 
         for row in rows:
-            self.addRow(row)
+            self.add_row(row)
 
         self.setLayout(self.layout)
 
-    def addRow(self, row):
+    def add_row(self, row):
         """Add a row to the layout, row is given by
         
         row = (label: str, path: str, selector: Union[str, slice], Optional[setter: func])
@@ -33,7 +32,4 @@ class ValueBoxForm(QWidget):
         elif len(row) == 4:
             self.layout.addRow(row[0], EditValueBox(self.dgw, row[1], row[2], row[3]))
         else:
-            raise Exception(
-                f"row {row} has wrong format."
-                ) 
-
+            raise ValueError(f"row {row} has wrong format.")
