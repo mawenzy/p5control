@@ -7,15 +7,31 @@ ExtendableAttributesTableView extends this and lets you add and remove attribute
 import logging
 from typing import Any
 
-from qtpy.QtCore import QAbstractTableModel, QModelIndex, Qt, Slot
+from qtpy.QtCore import QAbstractTableModel, QModelIndex, Qt, Slot, Signal, QObject
 from qtpy.QtWidgets import (
     QTableView, QHeaderView, QWidget, QHBoxLayout, QVBoxLayout, QPushButton
 )
 
+from ..rpycthread import rpyc_thread
 from ...gateway import DataGateway
 from ...util import name_generator
 
 logger = logging.getLogger(__name__)
+
+class _AttributesTableModelWorker(QObject):
+    new_attr = Signal(str, str, object)
+
+    def __init__(self, dgw, parent=None):
+        super().__init__(parent)
+        self.dgw = dgw
+
+    def get_attributes(
+        self,
+        path: str,
+    ):
+        # not optimized
+        for key, value in self.dgw.get(path).attrs.items():
+            self.new_attr.emit(path, key, value)
 
 class AttributesTableModel(QAbstractTableModel):
     """Model representing the attributes a group or dataset in the
@@ -28,6 +44,7 @@ class AttributesTableModel(QAbstractTableModel):
     editable : bool, optional
         whether entries can be edited    
     """
+    update_requested = Signal(str)
 
     def __init__(
         self,
@@ -39,9 +56,17 @@ class AttributesTableModel(QAbstractTableModel):
         self.dgw = dgw
         self.editable = editable
 
+        self.worker = _AttributesTableModelWorker(self.dgw)
+        self.worker.moveToThread(rpyc_thread)
+
+        self.worker.new_attr.connect(self.add_attr)
+        self.update_requested.connect(self.worker.get_attributes)
+
         self.node = None
+        self.path = None
         self.column_count = 3
-        self.row_count = 0
+
+        self.attrs_list = []
 
     def update_node(self, path):
         """
@@ -53,27 +78,40 @@ class AttributesTableModel(QAbstractTableModel):
             hdf5 path for the inspected group or dataset
         """
         self.node = self.dgw.get(path)
-        self.update_model()
- 
-    def update_model(self):
-        """Reset model and refetch the attributes from the data server. Since the order
-        of the elements depends on the iterate order of the dictionary, this might change
-        the order in which things appear in the table."""
-        if not self.node:
-            return
+        self.path = path
 
+        # reset model
         self.beginResetModel()
-
-        self.keys = list(self.node.attrs.keys())
-        self.values = list(self.node.attrs.values())
-        self.classes = [val.__class__.__name__ for val in self.values]
-
-        self.row_count = len(self.keys)
+        self.attrs_list = []
         self.endResetModel()
 
+        self.update_requested.emit(path)
+
+    def add_attr(
+        self,
+        path: str,
+        key: str,
+        value: object
+    ):
+        # skip attributs which do not belong to this path
+        if path != self.path:
+            return
+
+        self.beginInsertRows(
+            self.index(self.rowCount(), 0),
+            self.rowCount() + 1,
+            self.rowCount() + 1
+        )
+
+        self.attrs_list.append(
+            [key, value, value.__class__.__name__]
+        )
+
+        self.endInsertRows()
+
     def rowCount(self, parent: QModelIndex = ...) -> int:
-        return self.row_count
-    
+        return len(self.attrs_list)
+
     def columnCount(self, parent: QModelIndex = ...) -> int:
         return self.column_count
 
@@ -89,30 +127,28 @@ class AttributesTableModel(QAbstractTableModel):
         if role == Qt.DisplayRole:
             if orientation == Qt.Horizontal:
                 return HEADERS[section]
-            else:
-                return str(section)
+            return str(section)
 
     def data(self, index: QModelIndex, role: int = ...) -> Any:
         """return the data which should be shown at index"""
         if index.isValid():
             column = index.column()
-            row = index.row()
+            row = self.attrs_list[index.row()]
 
             if role in (Qt.DisplayRole, Qt.ToolTipRole, Qt.EditRole):
 
                 if column == 0:
-                    return self.keys[row]
+                    return row[0]
                 elif column == 1:
-                    return str(self.values[row])
+                    return str(row[1])
                 elif column == 2:
-                    return self.classes[row]
+                    return row[2]
 
     def flags(self, index):
         """return flags to make attributes editable or not"""
         if self.editable:
             return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
-        else:
-            return Qt.NoItemFlags
+        return Qt.NoItemFlags
 
     def setData(self, index: QModelIndex, value: Any, role: int = ...) -> bool:
         """Called when setting data. Performs some checks and if they are successful,
@@ -126,13 +162,13 @@ class AttributesTableModel(QAbstractTableModel):
             if len(value) == 0:
                 return False
 
-            old_key = self.keys[row]
-            old_value = self.values[row]
-            old_class = self.classes[row]
+            old_key = self.attrs_list[row][0]
+            old_value = self.attrs_list[row][1]
+            old_class = self.attrs_list[row][2]
 
             if column == 0:
-                if value in self.keys:
-                    # stop overwriting of data
+                if value in (x[0] for x in self.attrs_list):
+                    # stop overwriting of data, this key already exists
                     return False
 
                 # try removing old entry
@@ -140,7 +176,7 @@ class AttributesTableModel(QAbstractTableModel):
                     # add new entry to database
                     self.node.attrs[value] = old_value
                     # update model
-                    self.keys[row] = value
+                    self.attrs_list[row][0] = value
 
                     self.dataChanged.emit(index, index, [])
                     return True
@@ -156,31 +192,27 @@ class AttributesTableModel(QAbstractTableModel):
                     try:
                         new_value = int(new_value)
                     except ValueError:
-                        logger.info(
-                            f'Failed to convert "{new_value}" to int'
-                        )
+                        logger.info('Failed to convert "%s" to int', new_value)
                         return False
                 elif new_class in ['float', 'float32', 'float64']:
                     try:
                         new_value = float(new_value)
                     except ValueError:
-                        logger.info(
-                            f'Failed to convert "{new_value}" to float'
-                        )
+                        logger.info('Failed to convert "%s" to float', new_value)
                         return False
                 else:
                     # unknown class, skipping
-                    logger.info(f"Unknown class {new_class}")
+                    logger.info("Unknown class %s", new_class)
                     return False
 
                 # change database entry
                 self.node.attrs[old_key] = new_value
                 # update model
-                self.values[row] = str(new_value)
-                self.classes[row] = new_class
+                self.attrs_list[row][1] = new_value
+                self.attrs_list[row][2] = new_class
 
                 self.dataChanged.emit(index, index, [])
-                return True              
+                return True
 
         return False
 
@@ -189,20 +221,14 @@ class AttributesTableModel(QAbstractTableModel):
         with a standard key and value."""
         # a node has to be selected
         if not self.node:
-            return 
-
-        self.beginInsertRows(
-            self.index(self.row_count, 0),
-            self.row_count + 1,
-            self.row_count + 1
-        )
+            return
         
         gen = name_generator("key", width=2)
         key = next(gen)
 
         # search for new key
         while True:
-            if key in self.keys:
+            if key in (x[0] for x in self.attrs_list):
                 key = next(gen)
             else:
                 break
@@ -211,22 +237,16 @@ class AttributesTableModel(QAbstractTableModel):
         self.node.attrs[key] = "new"
 
         # update model
-        self.keys.append(key)
-        self.values.append("new")
-        self.classes.append("str")
-
-        self.row_count += 1
-
-        self.endInsertRows()
+        self.add_attr(self.path, key, "new")
 
     def removeRow(self, row: int, parent: QModelIndex = ...) -> bool:
         """remove row specified with ``row`` from the attributes"""
-        if row < self.row_count:
+        if row < self.rowCount():
             # remove it on data server
             self.node.attrs.pop(self.keys[row])
 
             # reload model from server
-            self.update_model()
+            self.update_node(self.path)
 
 
 class AttributesTableView(QTableView):
