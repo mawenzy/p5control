@@ -57,6 +57,8 @@ class KeysightB2962A(BaseDriver):
     def triangle_mode(self, ch=None):
         if ch is None:
             ch=[1,2]
+        if type(ch)==int:
+            ch = [ch]
         for c in ch:
             self._inst.write(f":sour{c}:func:mode volt")
             self._inst.write(f":sour{c}:volt:mode arb")
@@ -74,6 +76,8 @@ class KeysightB2962A(BaseDriver):
     def output_on(self, val=True, ch=None):
         if ch is None:
             ch=[1,2]
+        if type(ch)==int:
+            ch = [ch]
         if val:
             outp = 'on'
         else:
@@ -85,6 +89,8 @@ class KeysightB2962A(BaseDriver):
     def output_off(self, ch=None):
         if ch is None:
             ch=[1,2]
+        if type(ch)==int:
+            ch = [ch]
         for c in ch:
             self._inst.write(f":outp{c} off")
         self.output = False
@@ -92,6 +98,8 @@ class KeysightB2962A(BaseDriver):
     def set_max_current(self, max_current, ch=None):
         if ch is None:
             ch=[1,2]
+        if type(ch)==int:
+            ch = [ch]
         for c in ch:
             self._inst.write(f":SENSe{c}:CURRent:DC:PROTection:LEVel:BOTH {max_current}")
         self._max_current = max_current
@@ -99,12 +107,16 @@ class KeysightB2962A(BaseDriver):
     def set_rise_time(self, t, ch=None):
         if ch is None:
             ch=[1,2]
+        if type(ch)==int:
+            ch = [ch]
         for c in ch:
             self._inst.write(f":sour{c}:arb:volt:tri:rtim {t}")
 
     def set_fall_time(self, t, ch=None):
         if ch is None:
             ch=[1,2]
+        if type(ch)==int:
+            ch = [ch]
         for c in ch:
             self._inst.write(f":sour{c}:arb:volt:tri:ftim {t}")
 
@@ -117,18 +129,24 @@ class KeysightB2962A(BaseDriver):
     def set_voltage(self, V, ch=None):
         if ch is None:
             ch=[1,2]
+        if type(ch)==int:
+            ch = [ch]
         for c in ch:
             self._inst.write(f":sour{c}:volt {V}")
     
     def set_triangle_top(self, V, ch=None):
         if ch is None:
             ch=[1,2]
+        if type(ch)==int:
+            ch = [ch]
         for c in ch:
             self._inst.write(f":sour{c}:arb:volt:tri:top {V}")
 
     def set_triangle_btm(self, V, ch=None):
         if ch is None:
             ch=[1,2]
+        if type(ch)==int:
+            ch = [ch]
         for c in ch:
             self._inst.write(f":sour{c}:arb:volt:tri:star {V}")
 
@@ -148,6 +166,8 @@ class KeysightB2962A(BaseDriver):
     def set_sweep_count(self, N, ch=None):
         if ch is None:
             ch=[1,2]
+        if type(ch)==int:
+            ch = [ch]
         for c in ch:
             self._inst.write(f":trig{c}:tran:coun {N}")
         self.sweep_count = N
