@@ -141,7 +141,8 @@ class DataGatewayPlot(QSplitter):
             try:
                 class_ref = getPlotConfigOption(plot_config)
             except KeyError:
-                print("KeyError")
+                print(f"KeyError plot_config : {plot_config}")
+                return
 
             config = class_ref(self.dgw, path, *args, **kwargs)
         else:

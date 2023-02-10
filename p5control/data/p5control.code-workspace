@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"name": "p5control",
+			"path": "../.."
+		}
+	],
+	"settings": {
+		"python.analysis.typeCheckingMode": "off"
+	}
+}

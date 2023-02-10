@@ -217,4 +217,4 @@ class ZNB40(BaseDriver):
                     start = self.get_start_frequency(),
                     stop = self.get_stop_frequency(),
                     points = self.get_sweep_points(),
-                    plotConfig = "dset_lnspc")
+                    plot_config = "dset_lnspc")

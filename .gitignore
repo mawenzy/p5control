@@ -12,3 +12,4 @@ manuals/
 # build
 p5control.egg-info
 dist
+build

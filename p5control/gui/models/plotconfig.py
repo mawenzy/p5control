@@ -250,10 +250,10 @@ PLOT_CONFIGS = {
     'grp': GroupPlotConfig,
 }
 
-def setPlotConfigOption(key, value):
-    if not isinstance(value, BasePlotConfig):
-        raise ValueError(f'value {value} is not an instance of {BasePlotConfig}')
-    PLOT_CONFIGS[key] = value
+def setPlotConfigOption(key, cls):
+    if not issubclass(cls, BasePlotConfig):
+        raise ValueError(f'value {cls} is not an instance of {BasePlotConfig}')
+    PLOT_CONFIGS[key] = cls
 
 def getPlotConfigOption(key):
     return PLOT_CONFIGS[key]
