@@ -6,11 +6,10 @@ from typing import Iterable, Optional, List
 
 import h5py
 
-from qtpy.QtCore import Qt, Signal, Slot, QModelIndex, QItemSelection, QMimeData, QPoint, QObject
+from qtpy.QtCore import Qt, Signal, Slot, QModelIndex, QItemSelection, QMimeData, QPoint, QObject, QThread
 from qtpy.QtWidgets import QTreeView, QAbstractItemView, QMenu
 from qtpy.QtGui import QStandardItemModel, QStandardItem, QIcon, QAction
 
-from ..rpycthread import rpyc_thread
 from ...gateway import DataGateway
 
 class _DataGatewayTreeModelWorker(QObject):
@@ -91,8 +90,11 @@ class DataGatewayTreeModel(QStandardItemModel):
 
         self.dgw = dgw
 
+        # worker + thread
         self.worker = _DataGatewayTreeModelWorker(self.dgw)
-        self.worker.moveToThread(rpyc_thread)
+        self.worker_thread = QThread(self)
+        self.worker.moveToThread(self.worker_thread)
+        self.worker_thread.start()
 
         self.worker.new_node.connect(self.add_node)
         self.update_children.connect(self.worker.get_children)
@@ -290,6 +292,13 @@ class DataGatewayTreeView(QTreeView):
             # enable custom context menu
             self.setContextMenuPolicy(Qt.CustomContextMenu)
             self.customContextMenuRequested.connect(self._on_custom_context_menu)
+
+    def cleanup(self):
+        """
+        Assure that the model worker thread is quit before exiting the application.
+        """
+        self.tree_model.worker_thread.quit()
+        self.tree_model.worker_thread.wait()
 
     @Slot(QPoint)
     def _on_custom_context_menu(
