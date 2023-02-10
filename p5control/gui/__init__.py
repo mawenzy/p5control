@@ -26,6 +26,7 @@ from .widgets import (
 from .cleanupapp import CleanupApp
 from .guidatagw import GuiDataGateway
 from .databuffer import DataBuffer
+from .threadcontrol import run_async
 
 from .models import (
     BasePlotConfig,

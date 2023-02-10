@@ -12,7 +12,7 @@ from qtpy.QtWidgets import (
     QTableView, QHeaderView, QWidget, QHBoxLayout, QVBoxLayout, QPushButton
 )
 
-from ..rpycthread import rpyc_thread
+from ..threadcontrol import rpyc_thread
 from ...gateway import DataGateway
 from ...util import name_generator
 
@@ -259,7 +259,7 @@ class AttributesTableView(QTableView):
     editable : bool = True
         whether the elements in the table should be editable
     """
-    
+
     def __init__(
         self,
         dgw: DataGateway,

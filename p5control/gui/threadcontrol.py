@@ -2,6 +2,7 @@
 This module defines a QThread subclass, into which you should push worker objects that use rpyc
 requests, such that these do not block the gui event loop.
 """
+import threading
 
 from typing import Optional
 
@@ -41,3 +42,19 @@ To move a worker to the thread, use:
 Now every time you emit the request signal, the worker will do its work in the ``rpyc_thread`` and
 then emit a signal if it has finished. Have a look at ``DataGatewayTreeModel`` to see it in action.
 """
+
+def run_async(func, parent, callback=None):
+    """runs function ``func`` in another thread and then calls callback upon completion. a qt
+    QObject needs to be provided such that the thread instance is not deleted when exiting this
+    function.
+    """
+    class WorkerThread(QThread):
+        def run(self) -> None:
+            func()
+
+    thread = WorkerThread(parent)
+    thread.start()
+
+    if callback:
+        thread.finished.connect(callback)
+    thread.finished.connect(thread.deleteLater)

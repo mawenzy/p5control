@@ -12,7 +12,7 @@ from qtpy.QtWidgets import QApplication
 
 from pyqtgraph import _connectCleanup, setConfigOption
 
-from .rpycthread import rpyc_thread
+from .threadcontrol import rpyc_thread
 
 logger = logging.getLogger(__name__)
 
