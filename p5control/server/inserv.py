@@ -36,7 +36,6 @@ class InstrumentServer(BaseServer):
 
         # Status mesaurement
         self._status_measurement = None
-        self._status_thread_stop_event = threading.Event()
 
         # Data server
         self._data_server_port = data_server_port

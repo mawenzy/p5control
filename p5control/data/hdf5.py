@@ -2,6 +2,7 @@
 This file provides an interface around an hdf5 file provided by ``h5py.File``.
 """
 import time
+import queue
 import logging
 import threading
 from typing import Tuple, Union, Any
@@ -9,23 +10,7 @@ from typing import Tuple, Union, Any
 import h5py
 import numpy as np
 
-from ..util import name_generator
-
 logger = logging.getLogger(__name__)
-
-# unique id generator for callbacks
-id_generator = name_generator(
-    "id",
-    width=4,
-)
-id_generator_lock = threading.Lock()
-
-def get_callback_id():
-    """Thread save id generator for unique callback ids."""
-    with id_generator_lock:
-        newid = next(id_generator)
-    logger.debug('generated id "%s"', newid)
-    return newid
 
 class HDF5FileInterfaceError(Exception):
     """Exceptions concerning the HDF5FileInterface"""
@@ -43,20 +28,14 @@ class HDF5FileInterface():
     def __init__(
         self,
         filename: str,
+        callback_queue: queue.Queue = None
     ):
         logger.debug('filename "%s"', filename)
         self._filename = filename
+        self._callback_queue = callback_queue
 
         self._f = None
         self._lock = threading.Lock()
-
-        # callbacks for adding data to a dataset
-        self._dset_callbacks = {}
-        self._dset_callback_lock = threading.Lock()
-
-        # callbacks for adding new elements below a group
-        self._grp_callbacks = {}
-        self._grp_callback_lock = threading.Lock()
 
         # open file
         self.open()
@@ -64,7 +43,7 @@ class HDF5FileInterface():
     def open(self):
         """Open file in mode 'a'."""
         if self._f:
-            raise Exception("Can't open h5py.File because it is already open")
+            raise HDF5FileInterfaceError("Can't open h5py.File because it is already open")
 
         logger.info('opening file "%s" in mode "a"', self._filename)
         self._f = h5py.File(self._filename, "a", libver="latest")
@@ -72,18 +51,7 @@ class HDF5FileInterface():
     def close(self):
         """Closes file the file and removes all callbacks."""
         if not self._f:
-            raise Exception("Can't close h5py.File because there is none open")
-
-        # removing callbacks
-        logger.debug('removing all dataset callbacks')
-        with self._dset_callback_lock:
-            for key in self._dset_callbacks.copy():
-                self._dset_callbacks.pop(key)
-
-        logger.debug('removing all group callbacks')
-        with self._grp_callback_lock:
-            for key in self._grp_callbacks.copy():
-                self._grp_callbacks.pop()
+            raise HDF5FileInterfaceError("Can't close h5py.File because there is none open")
 
         logger.info('closing file "%s"', self._filename)
         self._f.close()
@@ -187,15 +155,8 @@ class HDF5FileInterface():
             dset.attrs[key] = value
 
         # callbacks
-        with self._dset_callback_lock:
-            for (callid, (callpath, func)) in self._dset_callbacks.copy().items():
-                if callpath == path:
-                    try:
-                        logger.debug('calling callback "%s" for "%s"', callid, path)
-                        func(arr)
-                    except EOFError:
-                        logger.info('Can\'t connect to callback "%s", removing it.', callid)
-                        self._dset_callbacks.pop(callid)
+        if self._callback_queue:
+            self._callback_queue.put((path, arr, False))
 
     def _convert_to_array(
         self,
@@ -293,79 +254,10 @@ class HDF5FileInterface():
         logger.debug('attribute for "%s", "created_on"', path)
         dset.attrs["created_on"] = time.ctime()
 
-        # callbacks
-        with self._grp_callback_lock:
-            for (callid, (callpath, func)) in self._grp_callbacks.copy().items():
-                if path.startswith(callpath):
-                    try:
-                        logger.debug('calling group callback "%s" for "%s"', callid, path)
-                        func(path)
-                    except EOFError:
-                        logger.info('Can\'t connect to callback "%s", removing it.', callid)
-                        self._grp_callbacks.pop(callid)
+        if self._callback_queue:
+            self._callback_queue.put((path, None, True))
 
         return dset
-
-    def register_callback(
-        self,
-        path: str,
-        func,
-        is_group: bool = False,
-    ) -> None:
-        """Add a callback to call when data is appended to the dataset at `path`,
-        called with func(arr)
-
-        Parameters
-        ----------
-        path : str
-            path in the hdf5 file
-        func : function(np.ndarray)
-            function to call
-
-        Returns
-        -------
-        id : str
-            unique id to identify this callback and be able to remove it
-        """
-        callid = get_callback_id()
-
-        if is_group:
-            logger.info('registering callback "%s" for group: "%s"', callid, path)
-            with self._grp_callback_lock:
-                self._grp_callbacks[callid] = (path, func)
-        else:
-            logger.info('registering callback "%s" for dataset: "%s"', callid , path)
-            with self._dset_callback_lock:
-                self._dset_callbacks[callid] = (path, func)
-
-        return callid
-
-    def remove_callback(
-        self,
-        callid: str,
-    ):
-        """remove callback specified by ``id``.
-
-        Raises
-        ------
-        KeyError
-            if there exists no callback with ``id``
-        """
-        with self._dset_callback_lock:
-            if callid in self._dset_callbacks:
-                logger.info('removing callback "%s"', callid)
-                self._dset_callbacks.pop(callid)
-                return
-
-        with self._grp_callback_lock:
-            if callid in self._grp_callbacks:
-                logger.info('removing callback "%s"', callid)
-                self._grp_callbacks.pop(callid)
-                return
-
-        raise HDF5FileInterfaceError(
-            f'Can\'t remove callback with id "{callid}" because non exists.'
-        )
 
     def get_data(
         self,

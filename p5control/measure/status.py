@@ -37,8 +37,6 @@ class StatusMeasurement:
 
         self._thread = None
         self.STOP_EVENT = threading.Event()
-        # this event gets set when _status_measurement_thread has stopped
-        self.STATUS_THREAD_STOP_EVENT = threading.Event()
 
     def start(self):
         """
@@ -67,8 +65,7 @@ class StatusMeasurement:
         self.STOP_EVENT.set()
 
         # block until the thread is actually stopped
-        self.STATUS_THREAD_STOP_EVENT.wait()
-        self.STATUS_THREAD_STOP_EVENT.clear()
+        self._thread.join()
         self._thread = None
 
     def __enter__(self):
@@ -158,6 +155,3 @@ class StatusMeasurement:
 
         # reset stop flag
         stop_event.clear()
-
-        logger.info("stopped, setting event")
-        self.STATUS_THREAD_STOP_EVENT.set()

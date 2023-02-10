@@ -6,7 +6,7 @@ from rpyc.utils.classic import obtain
 from rpyc import ThreadedServer
 
 from ..settings import DATASERV_DEFAULT_PORT, DEFAULT_DATA_DIR
-from ..data import HDF5FileInterface
+from ..data import HDF5FileInterface, CallbackController
 from ..util import new_filename_generator
 from .baseserv import BaseServer, BaseServerError
 
@@ -42,6 +42,7 @@ class DataServer(BaseServer):
 
         logger.info('DataServer using file "%s"', self._filename)
 
+        self._callback_thread = None
         self._handler = None
 
     def _rpyc_server_thread(self):
@@ -61,12 +62,24 @@ class DataServer(BaseServer):
         # start the RPyC server
         super().start()
 
+        # start callback thread
+        logger.debug('starting callback thread')
+        self._callback_thread = CallbackController()
+        self._callback_thread.start()
+
         # open hdf5 file
-        self._handler = HDF5FileInterface(self._filename)
+        self._handler = HDF5FileInterface(self._filename, self._callback_thread.queue)
 
     def stop(self):
         # close hdf5 file
         self._handler.close()
+
+        if self._callback_thread:
+            logger.debug('stopping callback thread')
+            self._callback_thread.stop()
+            self._callback_thread = None
+        else:
+            logger.debug('no callback thread running, so nothing to stop.')
 
         # stop the RPyC server
         super().stop()
@@ -85,6 +98,22 @@ class DataServer(BaseServer):
     @property
     def filename(self):
         return self._filename
+
+    def register_callback(self, path, func, is_group = False):
+        """wraps callback controller register_callback"""
+        try:
+            return self._callback_thread.register_callback(path, func, is_group)
+        except AttributeError as exc:
+            raise DataServerError(
+                "Can\'t register callback because callback thread is not running.") from exc
+
+    def remove_callback(self, callid):
+        """wraps callback controller remove_callback"""
+        try:
+            return self._callback_thread.remove_callback(callid)
+        except AttributeError as exc:
+            raise DataServerError(
+                "Can\'t remove callback because callback thread is not runing.") from exc
 
     def __getattr__(
         self,

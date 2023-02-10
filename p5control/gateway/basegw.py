@@ -82,7 +82,8 @@ class BaseGateway:
                     logger.debug('starting BgServingThread')
                     self._bgsrv = rpyc.BgServingThread(
                         self._connection,
-                        callback=lambda: print("bg stopped")
+                        callback=lambda: print("bg stopped"),
+                        sleep_interval=0.1
                     )
 
             except OSError as exc:
