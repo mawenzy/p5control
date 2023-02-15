@@ -1,8 +1,9 @@
 """Base Class for a driver, as an example using pyvisa
 """
 import logging
-import pyvisa
 import threading
+
+import pyvisa
 
 from ..gateway import DataGateway
 
@@ -12,19 +13,19 @@ class BaseDriverError(Exception):
     """Exception related to the Driver"""
 
 class BaseDriver:
-    """Base class for a driver. Implements some common funcionality for a
-    message base driver with a given address.
+    """Base class for a driver. Implements some common funcionality for a message base driver with
+    a given address.
 
-    Inherit this class when implementing your own driver. Overwrite the different
-    functions as detailed below to allow the server to automatically collect data
-    and track the status of the instrument.
+    Inherit this class when implementing your own driver. Overwrite the different functions as
+    detailed below to allow the server to automatically collect data and track the status of the
+    instrument.
 
     **Thread-Safety:**
 
-    pyvisa itself is a thread safe library, so it is not necessary to think about
-    thread safety for this simple driver. If you use a different library, make
-    sure that it is thread safe or implement a driver-wide lock to stop weird
-    behavior.
+    pyvisa itself is not thread safe, even if the faq on their docs states this, see
+    https://github.com/pyvisa/pyvisa/issues/726. Thus it is necessary to think about thread safety.
+    If you use a different library, make sure that it is thread safe or implement a driver-wide
+    lock to stop weird behavior.
     """
 
     def __init__(
@@ -75,12 +76,11 @@ class BaseDriver:
             )
 
         # setup device
-        rm = pyvisa.ResourceManager()
-        self._inst = rm.open_resource(self._address)
+        rem = pyvisa.ResourceManager()
+        self._inst = rem.open_resource(self._address)
 
-        logger.info(f'opened resource "{self._name}" at address "{self._address}"')
+        logger.info('opened resource "%s" at address "%s"', self._name, self._address)
 
-            
     def close(self):
         """Close connection to the device and reset self._inst variable to None
         
@@ -94,19 +94,16 @@ class BaseDriver:
                 f'connection to device {self._name} cannot be closed since it is not open.'
             )
 
-        logger.info(f'closing resource "{self._name}" at address "{self._address}"')
+        logger.info('closing resource "%s" at address "%s"', self._name, self._address)
         self._inst.close()
         self._inst = None
 
-        
     def __str__(self):
         """Description of the device"""
         if hasattr(self, "_address"):
             return f'Device "{self._name}" at address "{self._address}"'
-        else:
-            return f'Device "{self._name}"'
+        return f'Device "{self._name}"'
 
-        
     def _measuring_thread(
         self,
         stop_event: threading.Event,
@@ -142,29 +139,28 @@ class BaseDriver:
                 delay = getattr(self, 'refresh_delay')
             else:
                 delay = 0.5
-        logger.info(f'device "{self._name}" measuring with delay {delay}s')
+        logger.info('device "%s" measuring with delay %5.3fs', self._name, delay)
 
         try:
             self.setup_measuring()
         except NotImplementedError:
-            logger.info(f'device "{self._name}" does not implement setup_measuring, skipped.')
+            logger.info('device "%s" does not implement setup_measuring, skipped.', self._name)
 
         # Connect to data server
         dgw = DataGateway()
         dgw.connect()
 
         if entry_barrier:
-            logger.info(f'device "{self._name}" waiting at entry_barrier in _measurement_thread.')
+            logger.info('device "%s" waiting at entry_barrier in _measurement_thread.', self._name)
             entry_barrier.wait()
-            logger.info(f'device "{self._name}" released at entry_barrier')
+            logger.info('device "%s" released at entry_barrier', self._name)
 
         try:
             self.start_measuring()
         except NotImplementedError:
-            logger.info(f'device "{self._name}" does not implement start_measuring, skipped.')
+            logger.info('device "%s" does not implement start_measuring, skipped.', self._name)
 
-
-        # Measurement block 
+        # Measurement block
         while not stop_event.wait(delay):
 
             try:
@@ -173,30 +169,31 @@ class BaseDriver:
                 self._save_data(hdf5_path, res, dgw)
 
             # this device cannot be measured
-            except NotImplementedError as e:
-                logger.info(f'device "{self._name}" does not implement get_data, stopping measurement.')
+            except NotImplementedError:
+                logger.info(
+                    'device "%s" does not implement get_data, stopping measurement.', self._name)
                 break
-        
+
         # save any remaining data
         try:
             res = self.get_data()
             self._save_data(hdf5_path, res, dgw)
         except NotImplementedError:
-            pass        
+            pass
 
-        logger.info(f'stopping measurement of device "{self._name}"')
+        logger.info('stopping measurement of device "%s"', self._name)
 
         try:
             self.stop_measuring()
         except NotImplementedError:
-            logger.info(f'device "{self._name}" does not implement stop_measuring, skipped.')
+            logger.info('device "%s" does not implement stop_measuring, skipped.', self._name)
 
         dgw.disconnect()
 
         if exit_barrier:
-            logger.info(f'device "{self._name}" waiting at exit_barrier in _measurement_thread.')
+            logger.info('device "%s" waiting at exit_barrier in _measurement_thread.', self._name)
             exit_barrier.wait()
-            logger.info(f'device "{self._name}" released at exit_barrier')
+            logger.info('device "%s" released at exit_barrier', self._name)
 
     def _save_data(
         self,
@@ -204,7 +201,8 @@ class BaseDriver:
         array,
         dgw: DataGateway,
     ):
-        """Save data to hdf5 through a gateway. Overwrite this method if you want to change how or where this driver saves it data when being measured.
+        """Save data to hdf5 through a gateway. Overwrite this method if you want to change how or
+        where this driver saves it data when being measured.
         
         Parameters
         ----------
@@ -218,35 +216,30 @@ class BaseDriver:
         path = f"{hdf5_path}/{self._name}"
         dgw.append(path, array)
 
-            
     def stop_measuring(self):
-        """In this method, write the commands necessary to restore the original state
-        of the device after a measurement has been completed."""
+        """In this method, write the commands necessary to restore the original state of the device
+        after a measurement has been completed."""
         raise NotImplementedError(f'device "{self._name}" does not implement "stop_measuring".')
 
-    
     def setup_measuring(self):
         """Setup the device prior to measurement, for example the rate of acquisition etc..."""
         raise NotImplementedError(f'device "{self._name}" does not implement "setup_measuring".')
 
-
     def start_measuring(self):
         """Start the measurement"""
         raise NotImplementedError(f'device "{self._name}" does not implement "start_measuring".')
-
 
     def get_data(self):
         """Request data from the device and process it. This can for example include the creation
         of time stamps for the corresponding time points."""
         raise NotImplementedError(f'device "{self._name}" does not implement "get_data".')
 
-        
     def get_status(self):
-        """Query the status of the device, including parameters which you want to be logged 
-        during to whole uptime of the instrument server, this can include temperature measurement
-        of just the status of the device. 
+        """Query the status of the device, including parameters which you want to be logged during
+        to whole uptime of the instrument server, this can include temperature measurement of just
+        the status of the device. 
         
-        This method is called periodically but with a significant longer period than `get_data` 
+        This method is called periodically but with a significant longer period than `get_data`
         during an actual measurment.
         
         If this method is not implemented, nothing will get logged.
@@ -256,3 +249,27 @@ class BaseDriver:
         note that "time" will be automatically added in the status_measurement_thread.
         """
         raise NotImplementedError(f'device "{self._name}" does not implement "get_status".')
+
+
+class ThreadSafeBaseDriver(BaseDriver):
+    """
+    Extends ``BaseDriver`` with thread safe ``read``, ``write`` and ``query`` methods.
+    """
+    def open(self):
+        super().open()
+        self.lock = threading.Lock()
+
+    def write(self, message: str):
+        """Write a string message to the device, thread safe."""
+        with self.lock:
+            return self._inst.write(message)
+
+    def read(self):
+        """Read a message from the device, thread safe."""
+        with self.lock:
+            return self._inst.read()
+
+    def query(self, message: str):
+        """Write a message to the device and read a response."""
+        with self.lock:
+            return self._inst.query(message)
