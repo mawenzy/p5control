@@ -161,7 +161,7 @@ class KeysightB2962A(ThreadSafeBaseDriver):
         self.amplitude = amplitude
     
     
-    def set_sweep_count(self, N, ch=None):
+    def set_sweep_count(self, N: int, ch=None):
         if ch is None:
             ch=[1,2]
         if type(ch)==int:
