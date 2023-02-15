@@ -1,12 +1,16 @@
 """
 Driver for KEYSIGHT B2962A Power Source
 """
-from .basedriver import BaseDriver
-from logging import getLogger
+import logging
 
-logger = getLogger(__name__)
+from .basedriver import ThreadSafeBaseDriver
 
-class KeysightB2962A(BaseDriver):
+logger = logging.getLogger(__name__)
+
+class KeysightB2962A(ThreadSafeBaseDriver):
+    """
+    Driver for KEYSIGHT B2962A Power Source
+    """
 
     def open(self):
         super().open()
@@ -27,12 +31,6 @@ class KeysightB2962A(BaseDriver):
 
         self.output_on()
 
-    def query(self, query):
-        return self._inst.query(query)
-    def write(self, write):
-        self._inst.write(write)
-    def read(self):
-        return self._inst.read()
     def timeout(self, timeout):
         self._inst.timeout = int(timeout)
 
@@ -69,9 +67,9 @@ class KeysightB2962A(BaseDriver):
             
     def trigger(self, channel=None):
         if channel is None:
-            self._inst.write(f"INIT (@1,2)")
+            self.write(f"INIT (@1,2)")
         else:
-            self._inst.write(f"INIT (@{channel})")
+            self.write(f"INIT (@{channel})")
 
     def output_on(self, val=True, ch=None):
         if ch is None:
