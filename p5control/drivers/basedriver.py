@@ -262,14 +262,17 @@ class ThreadSafeBaseDriver(BaseDriver):
     def write(self, message: str):
         """Write a string message to the device, thread safe."""
         with self.lock:
+            logger.debug('"%s" write "%s"', self._name, message)
             return self._inst.write(message)
 
     def read(self):
         """Read a message from the device, thread safe."""
         with self.lock:
+            logger.debug('"%s" read', self._name)
             return self._inst.read()
 
     def query(self, message: str):
         """Write a message to the device and read a response."""
         with self.lock:
+            logger.debug('"%s" query "%s"', self._name, message)
             return self._inst.query(message)
