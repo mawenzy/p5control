@@ -43,14 +43,14 @@ Now every time you emit the request signal, the worker will do its work in the `
 then emit a signal if it has finished. Have a look at ``DataGatewayTreeModel`` to see it in action.
 """
 
-def run_async(func, parent, callback=None):
+def run_async(func, parent, *args, callback=None):
     """runs function ``func`` in another thread and then calls callback upon completion. a qt
     QObject needs to be provided such that the thread instance is not deleted when exiting this
     function.
     """
     class WorkerThread(QThread):
         def run(self) -> None:
-            func()
+            func(*args)
 
     thread = WorkerThread(parent)
     thread.start()
