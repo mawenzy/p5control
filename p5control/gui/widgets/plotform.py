@@ -29,7 +29,8 @@ class PlotForm(QWidget):
     **Signal(str)** - emitted if the config is updated, provides the id
     """
 
-    IGNORE_KEYS = ['plotDataItem', 'id', 'lock', 'dataBuffer', 'path', 'symbol', 'symbolBrush', 'symbolPen', 'symbolSize', 'data']
+    IGNORE_KEYS = ['plotDataItem', 'id', 'lock', 'dataBuffer', 'path', 'symbol', 'symbolBrush',
+                   'symbolPen', 'symbolSize', 'data', 'x_data']
     """
     List of keys in config which should be ignored in this form
     """
