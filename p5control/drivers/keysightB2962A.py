@@ -35,88 +35,91 @@ class KeysightB2962A(ThreadSafeBaseDriver):
         self._inst.timeout = int(timeout)
 
     def get_error_message(self):
-        return self._inst.query(":SYSTem:ERRor:CODE:ALL?")
+        return self.query(":SYSTem:ERRor:CODE:ALL?")
         
     def check_for_error(self):
         error = self.get_error_message()
         if error!='+0':
-            logger.error(f'{self._name} ERROR: {error}')
+            logger.error('"%s" ERROR: %s', self._name, error)
 
     def reset(self):
-        self._inst.write("*CLS") # clear status command
-        self._inst.write("*RST") # reset the instrument for SCPI operation
-        self._inst.query("*OPC?") # wait for the operation to complete
-        self.output = False
-        self.max_current = 0
-        self.frequency = 0
-        self.amplitude = 0
-        self.sweep_count = 0
+        with self.lock:
+            self._inst.write("*CLS") # clear status command
+            self._inst.write("*RST") # reset the instrument for SCPI operation
+            self._inst.query("*OPC?") # wait for the operation to complete
+            self.output = False
+            self.max_current = 0
+            self.frequency = 0
+            self.amplitude = 0
+            self.sweep_count = 0
+
+    def _get_channel(self, ch=None):
+        """
+        Convenience function to convert ``ch`` argument to the desired format of a list of ints.
+        Options include:
+            -   **None** - default, both channels are addressed, returns ``[1,2]``
+            -   **i** - with i being a integer returns ``[i]`` to specify which channel to use
+            -   **other** - returns ch
+
+        Parameters
+        ----------
+        ch : Optional
+            specifies the channels
+        """
+        if ch is None:
+            return [1,2]
+        if type(ch) == int:
+            return [ch]
+        return ch
 
     def triangle_mode(self, ch=None):
-        if ch is None:
-            ch=[1,2]
-        if type(ch)==int:
-            ch = [ch]
+        ch = self._get_channel(ch)
         for c in ch:
-            self._inst.write(f":sour{c}:func:mode volt")
-            self._inst.write(f":sour{c}:volt:mode arb")
-            self._inst.write(f":sour{c}:arb:func tri")
-            self._inst.write(f":sour{c}:arb:volt:tri:star:time 0")
-            self._inst.write(f":sour{c}:arb:volt:tri:end:time 0")
-            self._inst.write(f":trig{c}:tran:sour aint")
+            with self.lock:
+                self._inst.write(f":sour{c}:func:mode volt")
+                self._inst.write(f":sour{c}:volt:mode arb")
+                self._inst.write(f":sour{c}:arb:func tri")
+                self._inst.write(f":sour{c}:arb:volt:tri:star:time 0")
+                self._inst.write(f":sour{c}:arb:volt:tri:end:time 0")
+                self._inst.write(f":trig{c}:tran:sour aint")
             
-    def trigger(self, channel=None):
-        if channel is None:
+    def trigger(self, ch=None):
+        if ch is None:
             self.write(f"INIT (@1,2)")
         else:
-            self.write(f"INIT (@{channel})")
+            self.write(f"INIT (@{ch})")
 
     def output_on(self, val=True, ch=None):
-        if ch is None:
-            ch=[1,2]
-        if type(ch)==int:
-            ch = [ch]
+        ch = self._get_channel(ch)
         if val:
             outp = 'on'
         else:
             outp = 'off'
         for c in ch:
-            self._inst.write(f":outp{c} {outp}")
+            self.write(f":outp{c} {outp}")
         self.output = val
 
     def output_off(self, ch=None):
-        if ch is None:
-            ch=[1,2]
-        if type(ch)==int:
-            ch = [ch]
+        ch = self._get_channel(ch)
         for c in ch:
-            self._inst.write(f":outp{c} off")
+            self.write(f":outp{c} off")
         self.output = False
 
     def set_max_current(self, max_current, ch=None):
-        if ch is None:
-            ch=[1,2]
-        if type(ch)==int:
-            ch = [ch]
+        ch = self._get_channel(ch)
         for c in ch:
-            self._inst.write(f":SENSe{c}:CURRent:DC:PROTection:LEVel:BOTH {max_current}")
+            self.write(f":SENSe{c}:CURRent:DC:PROTection:LEVel:BOTH {max_current}")
         self._max_current = max_current
 
     def set_rise_time(self, t, ch=None):
-        if ch is None:
-            ch=[1,2]
-        if type(ch)==int:
-            ch = [ch]
+        ch = self._get_channel(ch)
         for c in ch:
-            self._inst.write(f":sour{c}:arb:volt:tri:rtim {t}")
+            self.write(f":sour{c}:arb:volt:tri:rtim {t}")
 
     def set_fall_time(self, t, ch=None):
-        if ch is None:
-            ch=[1,2]
-        if type(ch)==int:
-            ch = [ch]
+        ch = self._get_channel(ch)
         for c in ch:
-            self._inst.write(f":sour{c}:arb:volt:tri:ftim {t}")
+            self.write(f":sour{c}:arb:volt:tri:ftim {t}")
 
     def set_frequency(self, frequency):
         _half_time = .5/frequency
@@ -125,28 +128,19 @@ class KeysightB2962A(ThreadSafeBaseDriver):
         self.frequency = frequency
         
     def set_voltage(self, V, ch=None):
-        if ch is None:
-            ch=[1,2]
-        if type(ch)==int:
-            ch = [ch]
+        ch = self._get_channel(ch)
         for c in ch:
-            self._inst.write(f":sour{c}:volt {V}")
+            self.write(f":sour{c}:volt {V}")
     
     def set_triangle_top(self, V, ch=None):
-        if ch is None:
-            ch=[1,2]
-        if type(ch)==int:
-            ch = [ch]
+        ch = self._get_channel(ch)
         for c in ch:
-            self._inst.write(f":sour{c}:arb:volt:tri:top {V}")
+            self.write(f":sour{c}:arb:volt:tri:top {V}")
 
     def set_triangle_btm(self, V, ch=None):
-        if ch is None:
-            ch=[1,2]
-        if type(ch)==int:
-            ch = [ch]
+        ch = self._get_channel(ch)
         for c in ch:
-            self._inst.write(f":sour{c}:arb:volt:tri:star {V}")
+            self.write(f":sour{c}:arb:volt:tri:star {V}")
 
     def set_amplitude(self, amplitude):
         _half_amplitude = amplitude / 2
@@ -160,13 +154,9 @@ class KeysightB2962A(ThreadSafeBaseDriver):
         self.set_triangle_top(-_half_amplitude, ch=2)
         self.amplitude = amplitude
     
-    
     def set_sweep_count(self, N: int, ch=None):
-        if ch is None:
-            ch=[1,2]
-        if type(ch)==int:
-            ch = [ch]
+        ch = self._get_channel(ch)
         for c in ch:
-            self._inst.write(f":trig{c}:tran:coun {N}")
+            self.write(f":trig{c}:tran:coun {N}")
         self.sweep_count = N
 
