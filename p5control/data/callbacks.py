@@ -5,6 +5,7 @@ to the data server.
 import logging
 import threading
 import queue
+import time
 from multiprocessing.pool import ThreadPool
 from subprocess import TimeoutExpired
 
@@ -87,7 +88,8 @@ class CallbackController:
         self._thread.join()
         self._thread = None
 
-    def _call_callback(self, path, data, is_group):
+    def _call_callback(self, path, data, is_group, t_queued):
+        t_started = time.time()
         if is_group:
             calls = []
 
@@ -122,6 +124,18 @@ class CallbackController:
                     logger.info('Can\'t connect to callback "%s", removing it.', callid)
                     self.remove_callback(callid)
 
+        return t_queued, t_started, time.time(), path, is_group
+
+    def _after_callback(self, args):
+        t_queued, t_started, t_ended, path, is_group = args
+
+        if t_started - t_queued > 5:
+            logger.warning('callback waited %.6fs. This indicates that the Thread pool cannot'
+                'handle the amount of callbacks.', t_started - t_queued)
+
+        logger.debug('waited %.6fs, ran %.6fs, "%s" is_group: %s',
+            t_started - t_queued, t_ended - t_started, path, is_group)
+
     def _callback_thread(
         self,
         stop_event: threading.Event,
@@ -137,7 +151,11 @@ class CallbackController:
             except queue.Empty:
                 continue
             else:
-                pool.apply_async(self._call_callback, args=args)
+                pool.apply_async(
+                    self._call_callback,
+                    args=[*args, time.time()],
+                    callback=self._after_callback
+                )
 
         pool.close()
         pool.join()
