@@ -17,3 +17,16 @@ STATUS_MEASUREMENT_BASE_PATH = "/status"
 
 CALLBACK_THREAD_COUNT = 5
 """The amount of threads in the thread pool responsible for callbacks."""
+
+GATEWAY_ADDRESS = "localhost"
+"""Address"""
+
+SETTINGS = {
+    'gateway_address': GATEWAY_ADDRESS
+}
+
+def set_setting(key, value):
+    SETTINGS[key] = value
+
+def get_setting(key):
+    return SETTINGS[key]

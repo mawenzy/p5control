@@ -9,6 +9,6 @@ from .gateway import InstrumentGateway, DataGateway
 
 from .measure import Measurement
 
-from .settings import INSERV_DEFAULT_PORT
+from .settings import INSERV_DEFAULT_PORT, set_setting, get_setting
 
 from .util import wait

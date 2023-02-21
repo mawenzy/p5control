@@ -6,7 +6,7 @@ import time
 
 import rpyc
 
-from ..settings import INSERV_DEFAULT_PORT
+from ..settings import INSERV_DEFAULT_PORT, get_setting
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +32,13 @@ class BaseGateway:
 
     def __init__(
         self,
-        addr: str = 'localhost',
+        addr: str = None,
         port: int = INSERV_DEFAULT_PORT,
         conn_timeout: float = 0.0,
         allow_callback: bool = False,
     ):
+        if addr is None:
+            addr = get_setting('gateway_address')
         self.addr = addr
         self.port = port
         self.conn_timeout = conn_timeout

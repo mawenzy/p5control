@@ -6,7 +6,7 @@ import logging
 from rpyc.utils.classic import obtain
 
 from .basegw import BaseGateway, BaseGatewayError
-from ..settings import DATASERV_DEFAULT_PORT
+from ..settings import DATASERV_DEFAULT_PORT, get_setting
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class DataGateway(BaseGateway):
     """
     def __init__(
         self,
-        addr: str = 'localhost',
+        addr: str = None,
         port: int = DATASERV_DEFAULT_PORT,
         conn_timeout: float = 0.0,
         allow_callback: bool = False,
