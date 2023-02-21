@@ -77,6 +77,7 @@ EVENT:
     time = time + (delta_t)/10^8 ' norm with 10ns
     before = now
     
+    FPar_9 = time
     Data_9 = time
     Data_1 = (c1/count-8388608)/16777216*FPar_1
     Data_2 = (c2/count-8388608)/16777216*FPar_2
