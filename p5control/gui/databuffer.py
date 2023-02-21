@@ -32,12 +32,17 @@ class DataBuffer:
 
     def __init__(
         self,
-        dgw: DataGateway,
         path: str,
+        dgw: DataGateway = None,
         max_length: int = DATA_BUFFER_MAX_LENGTH,
         down_sample: int = DOWN_SAMPLE,
     ):
         self.dgw = dgw
+        self.own_dgw = False
+        if dgw is None:
+            self.dgw = DataGateway(allow_callback=True)
+            self.dgw.connect()
+            self.own_dgw = True
         self.path = path
         self.max_length = max_length
         self.down_sample = down_sample
@@ -86,6 +91,8 @@ class DataBuffer:
         Remove callback
         """
         self.dgw.remove_callback(self.callid)
+        if self.own_dgw:
+            self.dgw.disconnect()
 
     def clear(self):
         """

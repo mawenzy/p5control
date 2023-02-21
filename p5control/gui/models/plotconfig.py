@@ -128,7 +128,6 @@ class PlotConfig(BasePlotConfig):
             self._config["down_sample"] = DOWN_SAMPLE
 
         self._config["dataBuffer"] = DataBuffer(
-            dgw,
             path,
             max_length=self._config["max_length"],
             down_sample=self._config["down_sample"]
