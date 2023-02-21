@@ -270,6 +270,7 @@ class DataGatewayTreeView(QTreeView):
 
         # set up the file tree view
         self.tree_model = DataGatewayTreeModel(self.dgw)
+        # self.tree_model = AsyncDataGatewayTableModel(self.dgw)
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.setHeaderHidden(True)
