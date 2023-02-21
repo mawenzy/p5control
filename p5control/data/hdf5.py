@@ -151,7 +151,7 @@ class HDF5FileInterface():
 
         # set attributes
         for (key, value) in kwargs.items():
-            logger.info('attribute for "%s", "%s" : %s', path, key, value)
+            logger.debug('attribute for "%s", "%s" : %s', path, key, value)
             dset.attrs[key] = value
 
         # callbacks

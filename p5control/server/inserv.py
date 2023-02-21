@@ -2,7 +2,6 @@
 This module defines the instrument server, which is a rpyc service loading device drivers and
 exposing them to clients.
 """
-import threading
 import logging
 from typing import Dict, Any, List
 

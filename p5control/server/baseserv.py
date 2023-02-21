@@ -1,5 +1,6 @@
 """
-This file provides a basic rpyc service which is wrapped to allow for a ThreadedServer to be started and stopped
+This file provides a basic rpyc service which is wrapped to allow for a ThreadedServer to be
+started and stopped
 """
 import time
 import threading
@@ -8,7 +9,6 @@ import logging
 from rpyc import Service, ThreadedServer
 
 logger = logging.getLogger(__name__)
-
 
 class BaseServerError(Exception):
     """Exception related to a Server"""
@@ -26,7 +26,7 @@ class BaseServer(Service):
     """
 
     def __init__(
-        self, 
+        self,
         port: int,
     ):
         self._port = port
@@ -54,7 +54,7 @@ class BaseServer(Service):
             raise BaseServerError(
                 f'Can\'t start the rpyc server at port {self._port} because one is already running.'
             )
-        
+
         thread = threading.Thread(target=self._rpyc_server_thread)
         thread.start()
 
@@ -71,9 +71,10 @@ class BaseServer(Service):
         """Stop the RPyC server"""
         if not self._rpyc_server:
             raise BaseServerError(
-                f'Can\'t stop the rpyc server at port {self._port} because there isn\'t one running.'
+                f'Can\'t stop the rpyc server at port {self._port} because there isn\'t one '
+                'running.'
             )
-        
+
         self._rpyc_server.close()
 
         # block until the server is actually closed
@@ -84,4 +85,3 @@ class BaseServer(Service):
     def __exit__(self, exc_type, exc_value, traceback):
         """Python context manager teardown"""
         self.stop()
-
