@@ -136,6 +136,7 @@ class ADwinGold2(BaseDriver):
 '''
 Panik Alert:
 
+Dim free, len1, len2, index as Long
 Import Math.LIB
         print(min(l), l)
         count = l[0]
