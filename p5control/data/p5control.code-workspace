@@ -1,8 +1,7 @@
 {
 	"folders": [
 		{
-			"name": "p5control",
-			"path": "../.."
+			"path": ".."
 		}
 	],
 	"settings": {
