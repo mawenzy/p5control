@@ -14,7 +14,6 @@
 '''
 ''' Important!!! compile as process nr. 10!
 '''
-Import Math.LIB
 
 #Include ADwinGoldII.inc
 
@@ -38,7 +37,7 @@ Init:
   FIFO_Clear(4)
   
   ' Min ProcessDelay that is Prime
-  ProcessDelay = 28330 ' 10ns
+  ProcessDelay = 2833 ' 10ns
   
   ' Range Pattern
   Par_1 = 00b

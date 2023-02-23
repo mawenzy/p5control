@@ -14,7 +14,6 @@
 '''
 ''' Important!!! compile as process nr. 10!
 '''
-Import Math.LIB
 
 #Include ADwinGoldII.inc
 
@@ -28,7 +27,6 @@ Dim Data_4[Buffersize] as Float as FIFO   ' Ch4
 Dim c1, c2, c3, c4 as Float
 Dim count, now, before as Long
 Dim time, delta_t as Float
-Dim free, len1, len2, index as Long
 
 Init:
   FIFO_Clear(9)
