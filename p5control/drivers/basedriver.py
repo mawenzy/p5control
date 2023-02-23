@@ -200,6 +200,7 @@ class BaseDriver:
         hdf5_path: str,
         array,
         dgw: DataGateway,
+        **kwargs
     ):
         """Save data to hdf5 through a gateway. Overwrite this method if you want to change how or
         where this driver saves it data when being measured.
@@ -213,8 +214,10 @@ class BaseDriver:
         dgw : DataGateway
             gateway to the dataserver
         """
+        if array is None:
+            return
         path = f"{hdf5_path}/{self._name}"
-        dgw.append(path, array)
+        dgw.append(path, array, **kwargs)
 
     def stop_measuring(self):
         """In this method, write the commands necessary to restore the original state of the device
