@@ -4,6 +4,8 @@ import os
 
 import numpy as np
 from ADwin import ADwin
+from threading import Lock
+from time import sleep
 
 from .basedriver import BaseDriver
 
@@ -22,12 +24,15 @@ class ADwinGold2(BaseDriver):
         self._name = name
 
         self.open()
+        self.lock = Lock()
         self._time_offset = time.time()
-        self.averaging = self.getAveraging()
-        self.ranges = np.array([10, 10, 10, 10])
 
         self.patterns = np.arange(4)
-        self.psbl_ranges = 10/2**self.patterns
+        self.ranges = np.array([10, 10, 10, 10])
+        self.psbl_ranges = 20/2**self.patterns
+
+        sleep(.1)
+        self.averaging = self.getAveraging()
 
     def open(self):
         """Just logs the call to debug."""
@@ -64,31 +69,34 @@ class ADwinGold2(BaseDriver):
     def start_measuring(self):
         """Start the measurement. Clear FIFOs
         """
-        self.inst.Set_Par(Index=10, Value=1)
+        with self.lock:
+            self.inst.Set_Par(Index=10, Value=1)
 
     def get_data(self):
         """Collects data
         """        
         logger.debug(f'{self._name}.get_data()')
-
-        l = [
-            self.inst.Fifo_Full(FifoNo=9),
-            self.inst.Fifo_Full(FifoNo=1),
-            self.inst.Fifo_Full(FifoNo=2),
-            self.inst.Fifo_Full(FifoNo=3),
-            self.inst.Fifo_Full(FifoNo=4)
-                ]
+        
+        with self.lock:
+            l = [
+                self.inst.Fifo_Full(FifoNo=9),
+                self.inst.Fifo_Full(FifoNo=1),
+                self.inst.Fifo_Full(FifoNo=2),
+                self.inst.Fifo_Full(FifoNo=3),
+                self.inst.Fifo_Full(FifoNo=4)
+                    ]
 
         l = list(map(int, l))
         count = min(l)
         if count <= 0:
             return None
 
-        times = np.array(self.inst.GetFifo_Float(FifoNo=9, Count=count), dtype='float64') + self._time_offset
-        ch1 = self.inst.GetFifo_Float(FifoNo=1, Count=count)
-        ch2 = self.inst.GetFifo_Float(FifoNo=2, Count=count)
-        ch3 = self.inst.GetFifo_Float(FifoNo=3, Count=count)
-        ch4 = self.inst.GetFifo_Float(FifoNo=4, Count=count)
+        with self.lock:
+            times = np.array(self.inst.GetFifo_Double(FifoNo=9, Count=count), dtype='float64') + self._time_offset
+            ch1 = self.inst.GetFifo_Double(FifoNo=1, Count=count)
+            ch2 = self.inst.GetFifo_Double(FifoNo=2, Count=count)
+            ch3 = self.inst.GetFifo_Double(FifoNo=3, Count=count)
+            ch4 = self.inst.GetFifo_Double(FifoNo=4, Count=count)
 
         return {
             "time": list(times),
@@ -105,31 +113,33 @@ class ADwinGold2(BaseDriver):
     - ranges
     """
 
-    def _save_data(self, hdf5_path: str, array, dgw):
+    def _save_data(self, hdf5_path: str, array, dgw):   
         return super()._save_data(hdf5_path, array, dgw, max_length=int(10000))
 
     def setAveraging(self, value:int):
         logger.debug('%s.setAveraging(%i)', self._name, value)
-        self.inst.Set_Par(Index=20, Value=value)
-        self.averaging = value
+        with self.lock:
+            self.inst.Set_Par(Index=20, Value=value)
+        self.averaging = self.getAveraging()
 
     def getAveraging(self):
         logger.debug('%s.getAveraging()', self._name)
-        value = int(self.inst.Get_FPar(20))
-        return value
+        with self.lock:
+            return int(self.inst.Get_Par(20))
 
     def setRange(self, range, ch:int):
         logger.debug('%s.setRange(%f, %i)', self._name, range, ch)        
-        index = np.argmin(np.abs(self.psbl_ranges-range))
-        self.inst.Set_FPar(Index=ch, Value = self.psbl_ranges[index])
-        self.inst.Set_Par(Index=ch, Value = int(self.patterns[index]))
-        self.ranges[ch-1] = self.psbl_ranges[index]
+        index = np.argmin(np.abs(self.psbl_ranges-range*2))
+        with self.lock:
+            self.inst.Set_FPar(Index=ch, Value = self.psbl_ranges[index])
+            self.inst.Set_Par(Index=ch, Value = int(self.patterns[index]))
+        self.ranges[ch-1] = self.psbl_ranges[index]/2
 
     def getRange(self, ch:int):
         logger.debug('%s.getRange(%i)', self._name, ch)
-        value = self.inst.Get_Fpar(ch)
-        return value
-
+        with self.lock:
+            return self.inst.Get_FPar(ch)/2
+        
 
 
 

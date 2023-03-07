@@ -27,7 +27,6 @@ Dim Data_4[Buffersize] as Float as FIFO   ' Ch4
 Dim c1, c2, c3, c4 as Float
 Dim count, now, before as Long
 Dim time, delta_t as Float
-Dim free, len1, len2, index as Long
 
 Init:
   FIFO_Clear(9)
@@ -37,7 +36,7 @@ Init:
   FIFO_Clear(4)
   
   ' Min ProcessDelay that is Prime
-  ProcessDelay = 2833 ' 10ns
+  ProcessDelay = 3137 ' 10ns
   
   ' Range Pattern
   Par_1 = 00b
@@ -52,7 +51,7 @@ Init:
   FPar_4 = 20
   
   ' Averaging Factor  
-  Par_20  = 100    
+  Par_20  = 1    
   
   ' Initialize Variables
   c1 = 0.0 : c2 = 0.0 : c3 = 0.0 : c4 = 0.0

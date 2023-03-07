@@ -36,7 +36,7 @@ Init:
   FIFO_Clear(4)
   
   ' Min ProcessDelay that is Prime
-  ProcessDelay = 2833 ' 10ns
+  ProcessDelay = 3137 ' 10ns
   
   ' Range Pattern
   Par_1 = 00b
@@ -51,7 +51,7 @@ Init:
   FPar_4 = 20
   
   ' Averaging Factor  
-  Par_20  = 100    
+  Par_20  = 10
   
   ' Initialize Variables
   c1 = 0.0 : c2 = 0.0 : c3 = 0.0 : c4 = 0.0
