@@ -40,15 +40,13 @@ class ADDAwinGold2(BaseDriver):
         self.psbl_ranges = 20/2**self.patterns
 
     def open(self):
-        """Just logs the call to debug."""
-        logger.debug("%s.open() %s"%(self._name, status))
+        """Opens connection to ADwin."""
         self.inst = ADwin()
-        self.inst.Boot(os.path.join(os.path.dirname(__file__), 
-                                    "adwin/ADwin11.btl"))
-        self.inst.Load_Process(os.path.join(os.path.dirname(__file__),
-                                            "adwin/addawin-gold2.TB0"))
+        self.inst.Boot(os.path.join(os.path.dirname(__file__), "adwin/ADwin11.btl"))
+        self.inst.Load_Process(os.path.join(os.path.dirname(__file__), "adwin/addawin-gold2.TB0"))
         self.inst.Start_Process(ProcessNo=10)
         status = self.inst.Process_Status(ProcessNo=10)
+        logger.debug("%s.open(), status: %s", self._name, status)
 
     def close(self):
         """Just logs the call to debug."""
@@ -59,7 +57,7 @@ class ADDAwinGold2(BaseDriver):
     """
     def get_status(self):
         """Returns the current averaging and ranges."""
-        logger.debug('%s.get_status()', self.name)
+        logger.debug('%s.get_status()', self._name)
         return {
             "sweeping": self.sweeping,
             "averaging": self.averaging,
