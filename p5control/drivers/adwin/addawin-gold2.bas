@@ -63,8 +63,8 @@ Init:
   FIFO_Clear(9)
   
   ' Min ProcessDelay that is Prime
-  ProcessDelay = 1973 ' 10ns
-  ' 19730ns delay => 152.053kHz, 6.49667us
+  ProcessDelay = 1987 ' 10ns
+  ' 19870ns delay => 150.981kHz, 6.62333us
   
   ' Range Pattern
   Par_1 = 00b

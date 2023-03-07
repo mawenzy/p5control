@@ -11,25 +11,25 @@
 ' Stacksize                      = 1000
 ' Info_Last_Save                 = DESKTOP-T9V68NA  DESKTOP-T9V68NA\BlueFors
 '<Header End>
-'''
-''' Important!!! compile as process nr. 10!
-'''
+'
+' Important!!! compile as process nr. 10!
+'
 
 #Include ADwinGoldII.inc
 
-#Define Buffersize 800000                 ' Anzahl der Werte ueber die gemittelt wird (10^6 funktioniert nicht)
-#define takt 0.00000001 '10^-8ns, 100kHz
-#DEFINE pi2 6.28318531        ' 2 * 3.14159265
-#DEFINE zwei15 32768 '2^15
-#DEFINE zwei16 65536 '2^16
-#DEFINE zwei24 16777216 '2^24
-#DEFINE zwei23 8388608 '2^23
-#DEFINE zwei31 2147483648 '2^31
-#DEFINE zwei32 4294967296 '2^32
-#DEFINE range 20 'output voltage range
+#Define Buffersize 800000 ' FIFO length
+#define takt 0.00000001 ' 10^-8ns, 100kHz
+#DEFINE pi2 6.28318531 ' 2 * 3.14159265
+#DEFINE zwei15 32768 ' 2^15
+#DEFINE zwei16 65536 ' 2^16
+#DEFINE zwei24 16777216 ' 2^24
+#DEFINE zwei23 8388608 ' 2^23
+#DEFINE zwei31 2147483648 ' 2^31
+#DEFINE zwei32 4294967296 ' 2^32
+#DEFINE range 20 ' output voltage range
 
-Dim Data_1[Buffersize] as Float as FIFO   ' Ch1
-Dim Data_2[Buffersize] as Float as FIFO   ' Ch2
+Dim Data_1[Buffersize] as Float as FIFO   ' V1
+Dim Data_2[Buffersize] as Float as FIFO   ' V2
 Dim Data_3[Buffersize] as Float as FIFO   ' X1
 Dim Data_4[Buffersize] as Float as FIFO   ' X2
 Dim Data_5[Buffersize] as Float as FIFO   ' Y1
@@ -52,6 +52,7 @@ Dim ch1, mean1, X1, Y1 as Float
 Dim ch2, mean2, X2, Y2 as Float
 
 Init:
+  ' Clear FIFOs
   FIFO_Clear(1)
   FIFO_Clear(2)
   FIFO_Clear(3)
@@ -62,8 +63,8 @@ Init:
   FIFO_Clear(9)
   
   ' Min ProcessDelay that is Prime
-  ProcessDelay = 1973 ' 10ns
-  '19730ns delay => 152.053kHz, 6.49667us
+  ProcessDelay = 1987 ' 10ns
+  ' 19730ns delay => 152.053kHz, 6.49667us
   
   ' Range Pattern
   Par_1 = 00b
@@ -73,19 +74,21 @@ Init:
   FPar_1 = 20
   FPar_2 = 20
   
+  ' Start Measuring / Clear FIFO
+  Par_8  = 0
+  
   ' Averaging Factor  
-  Par_8  = 0 'bool to empty
   Par_9  = 1
   
   ' Lockin (f, A)
   FPar_11 = 10 'Hz
   FPar_12 = 0.1 'V
   
-  'Sweep (f, A)
+  ' Sweep (f, A)
   FPar_13 = 1 'Hz
   FPar_14 = 1 'V
   
-  'sweep_bool
+  ' if Sweeping
   Par_10 = 0
   
   ' Initialize Variables
@@ -98,77 +101,81 @@ Init:
   value = zwei16 / range * (FPar_14 + FPar_12) + zwei15
   
   ' Initialize Output
-  Write_DAC(1,value) 'Ausgaberegister DAC1 setzen
-  Write_DAC(2,zwei16 - value) 'Ausgaberegister DAC2 setzen
-  Start_DAC() 'Ausgabe auf allen DAC starten
+  Write_DAC(1,value) ' Set output DAC1
+  Write_DAC(2,zwei16 - value) ' Set output DAC2
+  Start_DAC() ' Output On
   
 EVENT:   
   ' Convert Analog to Digital
   ' Gold-HW II p.78
   ' Value = ( SUM / N - ( bits / 2 ) ) / bits * Range
-  ' p.15 ADwin Gold II Handbuch
+  ' p.15 ADwin Gold II Handbook
   
-  ' REM Multiplexer setzen: ADC1 auf Kanal 1, ADC2 auf Kanal 2
-  Set_Mux1((000b | shift_left(Par_1, 3))) 'Multiplexer 1 auf ch 1 (1st ch row 1)
-  Set_Mux2((000b | shift_left(Par_2, 3))) 'Multiplexer 2 auf ch 2 (1st ch row 2)
-  ' Rem IO-Zugriff fuer 2 us (MUX-Einschwingzeit) unterbrechen
+  ' Set Multiplexer on channel with amplifier pattern
+  Set_Mux1((000b | shift_left(Par_1, 3))) ' (1st ch row 1)
+  Set_Mux2((000b | shift_left(Par_2, 3))) ' (1st ch row 2)
   
-  IO_SLEEP(200) ' waits additional 1.5us for musker to be finished
-  ' Rem Wartezeit nutzen (nicht fuer Zugriffe auf IOs oder Rem ext. Speicher)
-    
-  Start_Conv(11b) 'Wandlung fuer beide ADC starten
+  IO_SLEEP(200) ' Waits for 2us until MUX is settled
+  Start_Conv(11b) ' Starts Conversion
   
-'''''''''''''''''''''''''''''''''''''''''''''''
+''''' start use of waiting time '''''
+
   ' Calculate Time
-  now = Digin_Fifo_Read_Timer() + zwei31 'get timestamp between 1 and 2^32
+  ' get timestamp between 1 and 2^32
+  now = Digin_Fifo_Read_Timer() + zwei31
   delta_t = now - before 
-  If (delta_t <= 0) Then ' avoid phase slips
+  ' avoid phase slips
+  If (delta_t <= 0) Then
     delta_t = now-before + zwei32
   endif
-  time = time + delta_t * takt ' norm with 10ns
+  time = time + delta_t * takt
   before = now
   
   ' Convert Digital to Analog
   
-  ' Lock-in, lockin_value ? [-1, 1]
+  ' Lock-in, lockin_value [-1, 1]
   lockin_value = sin(pi2 * FPar_11 * time)
   cos_value = cos(pi2 * FPar_11 * time)
   
+  
+  ' Sweep, sweep_value [-1, 1]
   if (Par_10 = 1) Then
-    ' Sweep, sweep_value ? [-1, 1]
     t1 = t1 + delta_t  
     if (t1 <= period) Then
-      sweep_value = -1 + 2 * (t1 / period)
+      sweep_value = 1 - 2 * (t1 / period)
       trigger = 0
     endif
     if (t1 > period) Then
       if (t1 <= 2 * period) Then
-        sweep_value = 1 - 2 * (t1 / period-1)
+        sweep_value = -1 + 2 * (t1 / period - 1)
         trigger = 1
       endif
       if (t1 > 2 * period) Then
         t1 = t1 - 2 * period
-        sweep_value = -1 + 2 * (t1 / period)
+        sweep_value = 1 - 2 * (t1 / period)
         trigger = 0      
       endif
     endif
   endif
+  ' if not sweeping, sweep_value = 1
   if (Par_10 = 0) Then
     t1 = 0
-    sweep_value = -1
+    sweep_value = 1
   endif
     
+  ' Calculate and Set Output Value
   value = zwei16 / range * (FPar_14 * sweep_value + FPar_12 * lockin_value) + zwei15
   
-  Write_DAC(1, value) 'Ausgaberegister DAC1 setzen
-  Write_DAC(2, zwei16 - value) 'Ausgaberegister DAC2 setzen
-  Start_DAC() 'Ausgabe auf allen DAC starten
-'''''''''''''''''''''''''''''''''''''''''''''''
+  Write_DAC(1, value) ' Set output DAC1
+  Write_DAC(2, zwei16 - value) ' Set output DAC2
+  Start_DAC() ' Update Output
   
-  Wait_EOC(11b) 'Ende der Wandlungen abwarten
+''''' end use of waiting time '''''
   
-  ch1 = (Read_ADC24(1) - zwei23) / zwei24 * FPar_1 'ch1
-  ch2 = (Read_ADC24(2) - zwei23) / zwei24 * FPar_2 'ch2
+  Wait_EOC(11b) ' Wait for Conversion
+  
+  ch1 = (Read_ADC24(1) - zwei23) / zwei24 * FPar_1 ' ch1
+  ch2 = (Read_ADC24(2) - zwei23) / zwei24 * FPar_2 ' ch2
   
   mean1 = mean1 + ch1
   mean2 = mean2 + ch2
@@ -181,7 +188,7 @@ EVENT:
   
   ' Calculation of Averaging
   If (count >= Par_9) Then
-    period = .5 / FPar_13 / takt ' Not needed that frequently
+    period = .5 / FPar_13 / takt
     
     If (Par_8 = 1) Then
       FIFO_Clear(1)
@@ -199,7 +206,7 @@ EVENT:
       
     ' Calculate Time
     now = Digin_Fifo_Read_Timer() + zwei31
-    'get timestamp between 1 and 2^32
+    ' get timestamp between 1 and 2^32
     delta_t = now - before 
     If (delta_t <= 0) Then ' avoid phase slips
       delta_t = now - before + zwei32
