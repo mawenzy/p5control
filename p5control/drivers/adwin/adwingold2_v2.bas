@@ -17,7 +17,7 @@
 
 #Include ADwinGoldII.inc
 
-#Define Buffersize 800000 ' FIFO length
+#Define Buffersize 4000000 ' FIFO length
 #define takt 0.00000001 ' 10^-8ns, 100kHz
 #DEFINE pi2 6.28318531 ' 2 * 3.14159265
 #DEFINE zwei15 32768 ' 2^15
@@ -28,14 +28,14 @@
 #DEFINE zwei32 4294967296 ' 2^32
 #DEFINE range 20 ' output voltage range
 
-Dim Data_1[Buffersize] as Float as FIFO   ' V1
-Dim Data_2[Buffersize] as Float as FIFO   ' V2
-Dim Data_3[Buffersize] as Float as FIFO   ' X1
-Dim Data_4[Buffersize] as Float as FIFO   ' X2
-Dim Data_5[Buffersize] as Float as FIFO   ' Y1
-Dim Data_6[Buffersize] as Float as FIFO   ' Y2
-Dim Data_8[Buffersize] as Float as FIFO   ' trigger
-Dim Data_9[Buffersize] as Float as FIFO   ' time
+Dim Data_1[Buffersize] as Float as FIFO ' V1
+Dim Data_2[Buffersize] as Float as FIFO ' V2
+Dim Data_3[Buffersize] as Float as FIFO ' X1
+Dim Data_4[Buffersize] as Float as FIFO ' X2
+Dim Data_5[Buffersize] as Float as FIFO ' Y1
+Dim Data_6[Buffersize] as Float as FIFO ' Y2
+Dim Data_8[Buffersize] as Long as FIFO ' trigger
+Dim Data_9[Buffersize] as Float as FIFO ' time
   
 Dim count, now, before as Long
 Dim tic, toc as Long
@@ -44,9 +44,9 @@ Dim time, delta_t as Float
 Dim t1, period as Long
 Dim sweep_amplitude, sweep_frequency as Float
 Dim lockin_amplitude, lockin_frequency as Float
-Dim sweep_value, lockin_value, value, cos_value as Float
+Dim sweep_value, sin_value, cos_value, value as Float
 
-Dim trigger as Long
+Dim state, last_state, trigger as Long
 
 Dim ch1, mean1, X1, Y1 as Float
 Dim ch2, mean2, X2, Y2 as Float
@@ -64,7 +64,7 @@ Init:
   
   ' Min ProcessDelay that is Prime
   ProcessDelay = 1987 ' 10ns
-  ' 19730ns delay => 152.053kHz, 6.49667us
+  ' 19870ns delay => 150.981kHz, 6.62333us
   
   ' Range Pattern
   Par_1 = 00b
@@ -78,15 +78,15 @@ Init:
   Par_8  = 0
   
   ' Averaging Factor  
-  Par_9  = 1
+  Par_9  = 10
   
   ' Lockin (f, A)
-  FPar_11 = 10 'Hz
-  FPar_12 = 0.1 'V
+  FPar_11 = 10 ' Hz
+  FPar_12 = 0.1 ' V
   
   ' Sweep (f, A)
-  FPar_13 = 1 'Hz
-  FPar_14 = 1 'V
+  FPar_13 = 1 ' Hz
+  FPar_14 = 1 ' V
   
   ' if Sweeping
   Par_10 = 0
@@ -95,6 +95,7 @@ Init:
   ch1 = 0.0 : mean1 = 0.0 : X1 = 0.0 : Y1 = 0.0
   ch2 = 0.0 : mean2 = 0.0 : X2 = 0.0 : Y2 = 0.0
   count = 0 : time = 0 : now = 0 : t1 = 0
+  state = 0 : last_state = 0 : trigger = 0
   
   before = Digin_Fifo_Read_Timer() + zwei31
   period = .5 / FPar_13 / takt
@@ -134,37 +135,64 @@ EVENT:
   ' Convert Digital to Analog
   
   ' Lock-in, lockin_value [-1, 1]
-  lockin_value = sin(pi2 * FPar_11 * time)
+  sin_value = sin(pi2 * FPar_11 * time)
   cos_value = cos(pi2 * FPar_11 * time)
   
   
-  ' Sweep, sweep_value [-1, 1]
+  ' Sweep
+  ' - sweep_value [-1, 1]
+  ' - trigger {-1, 0, N} / {cv, no output, sweep count}
+  
+  ' sweep
   if (Par_10 = 1) Then
     t1 = t1 + delta_t  
     if (t1 <= period) Then
       sweep_value = 1 - 2 * (t1 / period)
-      trigger = 0
+      state = 1
     endif
     if (t1 > period) Then
       if (t1 <= 2 * period) Then
         sweep_value = -1 + 2 * (t1 / period - 1)
-        trigger = 1
+        state = 2
       endif
       if (t1 > 2 * period) Then
         t1 = t1 - 2 * period
         sweep_value = 1 - 2 * (t1 / period)
-        trigger = 0      
+        state = 1      
       endif
     endif
+    
+    ' Check if no output
+    if (FPar_14 = 0.0) Then
+      trigger = 0 : state = 0
+    endif
   endif
-  ' if not sweeping, sweep_value = 1
+  
+  ' cv
   if (Par_10 = 0) Then
-    t1 = 0
-    sweep_value = 1
+    t1 = 0 : sweep_value = 1
+    trigger = -1 : state = 0
+    
+    ' Check if no output
+    ' - trigger = 0
+    if (FPar_14 = 0.0) Then
+      trigger = 0
+    endif
+    
+    
   endif
+  
+  ' Increment trigger counter
+  if (state<>last_state) Then
+    if (trigger = -1) Then Inc(trigger)
+    Inc(trigger)
+    last_state = state
+  endif
+  
+    
     
   ' Calculate and Set Output Value
-  value = zwei16 / range * (FPar_14 * sweep_value + FPar_12 * lockin_value) + zwei15
+  value = zwei16 / range * (FPar_14 * sweep_value + FPar_12 * sin_value) + zwei15
   
   Write_DAC(1, value) ' Set output DAC1
   Write_DAC(2, zwei16 - value) ' Set output DAC2
@@ -180,8 +208,8 @@ EVENT:
   mean1 = mean1 + ch1
   mean2 = mean2 + ch2
   
-  X1 = X1 + ch1 * lockin_value
-  X2 = X2 + ch2 * lockin_value
+  X1 = X1 + ch1 * sin_value
+  X2 = X2 + ch2 * sin_value
   
   Y1 = Y1 + ch1 * cos_value
   Y2 = Y2 + ch2 * cos_value

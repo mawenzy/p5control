@@ -8,10 +8,11 @@ from threading import Lock
 from time import sleep
 
 from .basedriver import BaseDriver
+from ..gateway import DataGateway
 
 logger = logging.getLogger(__name__)
 
-class ADDAwinGold2(BaseDriver):
+class ADDAwinGold2_v2(BaseDriver):
     """Represents an instrument which magically measures a sine wave. Both the frequency and the amplitude can be changed.
 
     Parameters
@@ -39,11 +40,20 @@ class ADDAwinGold2(BaseDriver):
         self.ranges = np.array([10, 10])
         self.psbl_ranges = 20/2**self.patterns
 
+        self.cv_time = 1
+
+        self.case = -2
+        self.before = 0
+        self.start_value = 0
+
+        self.old_start = 0
+        self.old_case = -2
+
     def open(self):
         """Opens connection to ADwin."""
         self.inst = ADwin()
         self.inst.Boot(os.path.join(os.path.dirname(__file__), "adwin/ADwin11.btl"))
-        self.inst.Load_Process(os.path.join(os.path.dirname(__file__), "adwin/addawin-gold2.TB0"))
+        self.inst.Load_Process(os.path.join(os.path.dirname(__file__), "adwin/adwingold2_v2.TB0"))
         self.inst.Start_Process(ProcessNo=10)
         status = self.inst.Process_Status(ProcessNo=10)
         logger.debug("%s.open(), status: %s", self._name, status)
@@ -72,25 +82,26 @@ class ADDAwinGold2(BaseDriver):
     """
     Measurement
     """
-
     def start_measuring(self):
         """Start the measurement. Clear FIFOs
         """
         logger.debug('%s.start_measuring()', self._name)
+        self._time_offset = time.time()
         with self.lock:
             self.inst.Set_Par(Index=8, Value=1)
-    
-    def start_sweep(self):
-        self.setSweeping(True)
-            
-    def stop_sweep(self):
-        self.setSweeping(False)
+        # set back initials
+        self.case = -2
+        self.before = 0
 
     def get_data(self):
+        logger.debug('%s.get_data()', self._name)
+        data = self.collecting_data()
+        data['start_stops'] = self.get_startstop(data)
+        return data
+
+    def collecting_data(self):
         """Collects data
         """        
-        logger.debug('%s.get_data()', self._name)
-        
         with self.lock:
             l = [
                 self.inst.Fifo_Full(FifoNo=1),
@@ -117,23 +128,117 @@ class ADDAwinGold2(BaseDriver):
             Y1 = self.inst.GetFifo_Double(FifoNo=5, Count=count)
             Y2 = self.inst.GetFifo_Double(FifoNo=6, Count=count)
 
-            trigger = self.inst.GetFifo_Double(FifoNo=8, Count=count)
+            trigger = np.array(self.inst.GetFifo_Double(FifoNo=8, Count=count), dtype='int')
             times = np.array(self.inst.GetFifo_Double(FifoNo=9, Count=count), dtype='float64') + self._time_offset
             
         return {
             "time": list(times),
-            "trigger": list(trigger),
             "V1": list(V1),
             "V2": list(V2),
             "X1": list(X1),
             "X2": list(X2),
             "Y1": list(Y1),
             "Y2": list(Y2),
+            "trigger": list(trigger),
         }
+
+    def get_startstop(self, data):
+        """Get Starts and Stops
+        """        
+        trig = data['trigger']
+        tim = data['time']
+        val = data['V1']
+
+        # initialize new return values
+        starts = []
+        cases = []
+        times = []
+        values = []
+
+        # if changed trigger state
+        # or if not-sweeping and more time than self.cv_time is elapsed
+        for i, t in enumerate(trig):
+            test1 = (self.case != t)
+            test2 = (t <= 0)
+            test3 = (tim[i] - self.before >= self.cv_time)
+            if test1 or (test2 and test3):
+                # change values to actual values
+                self.case = t
+                self.before = tim[i]
+
+                # append to return values
+                temp = i+self.start_value
+                cases.append(self.case)
+                starts.append(temp)
+
+                times.append(tim[i])
+                values.append(val[i])
+
+        return {
+            'times': times, 
+            'starts': starts, 
+            'cases': cases,
+            'values': values,
+            }
+        
+    
+    """
+    Saving
+    """
+    def _save_data(
+        self,
+        hdf5_path: str,
+        array,
+        dgw: DataGateway,
+        **kwargs
+    ):
+        """Save data to hdf5 through a gateway. Overwrite this method if you want to change how or
+        where this driver saves it data when being measured.
+        
+        Parameters
+        ----------
+        hdf5_path : str
+            base hdf5_path under which you should save the data
+        array
+            data to save
+        dgw : DataGateway
+            gateway to the dataserver
+        """
+        
+        if array is None:
+            return
+        
+        path = f"{hdf5_path}/{self._name}"
+
+        if array['start_stops']['starts']:
+            starts = array['start_stops']['starts']
+            cases = array['start_stops']['cases']
+            # times = array['start_stops']['times']
+            # values = array['start_stops']['values']
+            array.pop('start_stops')
+
+
+            for i, s in enumerate(starts):
+                if self.old_case != -2: # skip default entry
+                    dgw.append(f"{path}/startstop", 
+                            {
+                                    # 'values': values[i],
+                                    # 'time': times[i],
+                                    'start': self.old_start,
+                                    'stop': s-1,
+                                    'case': self.old_case,
+                                }, 
+                            **kwargs)
+                self.old_start = s
+                self.old_case = cases[i]
+
+        dgw.append(f"{path}/raw_data", array, max_length=int(1e5), **kwargs)
+
+        self.start_value = dgw.get(f"{path}/raw_data").shape[0]
 
     """
     Properties
-    - default length in gui
+    - start / stop sweep
     - averaging
     - ranges
     - sweeping
@@ -142,20 +247,22 @@ class ADDAwinGold2(BaseDriver):
     - lockin_amplitude
     - lockin_frequency
     """
-
-    def _save_data(self, hdf5_path: str, array, dgw):   
-        return super()._save_data(hdf5_path, array, dgw, max_length=int(10000))
+    def start_sweep(self):
+        self.setSweeping(True)
+            
+    def stop_sweep(self):
+        self.setSweeping(False)
 
     def setAveraging(self, value:int):
         logger.debug('%s.setAveraging(%i)', self._name, value)
         with self.lock:
-            self.inst.Set_Par(Index=20, Value=value)
+            self.inst.Set_Par(Index=9, Value=value)
         self.averaging = self.getAveraging()
 
     def getAveraging(self):
         logger.debug('%s.getAveraging()', self._name)
         with self.lock:
-            return int(self.inst.Get_Par(20))
+            return int(self.inst.Get_Par(9))
 
     def setRange(self, range, ch:int):
         logger.debug('%s.setRange(%f, %i)', self._name, range, ch)        
