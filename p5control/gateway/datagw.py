@@ -47,7 +47,7 @@ class DataGateway(BaseGateway):
         in order to transfer the data to a local object.
         """
         logger.debug('obtaining result for "%s", %s, %s', path, indices, field)
-        return obtain(self._connection.root.get_data(path, indices, field))
+        return obtain(self._connection.root.get_data(path, indices = indices, field = field))
 
     def register_callback(self, path, func, is_group: bool = False):
         """Wraps ``self._connection.root.register_callback`` to check whether callbacks are
