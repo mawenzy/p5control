@@ -30,7 +30,7 @@ class StatusMeasurement:
     def __init__(
         self,
         devices: Dict[str, Any],
-        refresh_delay: float = 1,
+        refresh_delay: float = .5,
     ):
         self._devices = devices.copy()
         self.refresh_delay = refresh_delay
