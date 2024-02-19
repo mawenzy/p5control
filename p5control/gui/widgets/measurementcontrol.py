@@ -1,7 +1,7 @@
 from typing import Optional
 
 from qtpy.QtCore import Signal, Slot
-from qtpy.QtWidgets import QGridLayout, QWidget, QToolButton, QStyle, QLineEdit
+from qtpy.QtWidgets import QGridLayout, QWidget, QToolButton, QStyle, QLineEdit, QVBoxLayout
 
 from ...gateway import InstrumentGateway
 
@@ -111,7 +111,11 @@ class MeasurementControl(QWidget):
         layout.addWidget(self.btn, 0, 1)
         layout.addWidget(self.name, 0, 2)
 
-        self.setLayout(layout)
+        # self.setLayout(layout)
+        
+        vlayout = QVBoxLayout(self)
+        vlayout.addLayout(layout)
+        vlayout.addStretch()
 
         # get first measurement
         self.gw_update()
