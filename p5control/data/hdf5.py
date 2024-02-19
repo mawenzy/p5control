@@ -131,7 +131,7 @@ class HDF5FileInterface():
         # skip emtpy data
         if len(arr) == 0:
             return
-
+    
         # need this lock so that if two threads want to access a dataset which has to be created
         # do not both create it, raising a error
         with self._lock:
@@ -301,7 +301,7 @@ class HDF5FileInterface():
         logger.debug('dataset "%s", field: %s, indices %s', path, field, indices)
 
         if field:
-            return dset[field][indices]
+            return dset[indices][field]
 
         return dset[indices]
 
