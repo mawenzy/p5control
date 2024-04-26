@@ -18,6 +18,16 @@ clouds = (236, 240, 241)
 concrete = (149, 165, 166)
 blackish = (24, 24, 24)
 
+# Uni Konstanz Corporate Design
+seeblau = (89, 199, 235)
+peach = (254, 160, 144)
+seegrau = (154, 160, 167)
+petrol = (7, 113, 135)
+seegruen = (10, 144, 134)
+karpfenblau = (62, 84, 150)
+pinky = (224, 96, 126)
+bordeaux = (142, 32, 67)
+
 colors = OrderedDict(
     [
         ('r', pomegranate),
@@ -40,17 +50,36 @@ colors = OrderedDict(
         ('white', clouds),
         ('orange', orange),
         ('gray', concrete),
+        ('seeblau', seeblau),
+        ('peach', peach),
+        ('seegrau', seegrau),
+        ('petrol', petrol),
+        ('seegruen', seegruen),
+        ('karpfenblau', karpfenblau),
+        ('pinky', pinky),
+        ('bordeaux', bordeaux),
     ]
 )
 
+# cyclic_colors = [
+#     colors['r'],
+#     colors['g'],
+#     colors['b'],
+#     colors['m'],
+#     colors['c'],
+#     colors['o'],
+#     colors['gr'],
+# ]
+
 cyclic_colors = [
-    colors['r'],
-    colors['g'],
-    colors['b'],
-    colors['m'],
-    colors['c'],
-    colors['o'],
-    colors['gr'],
+    colors['seeblau'],
+    colors['bordeaux'],
+    colors['karpfenblau'],
+    colors['peach'],
+    colors['petrol'],
+    colors['pinky'],
+    colors['seegruen'],
+    colors['seegrau'],
 ]
 
 def color_cycler():
