@@ -134,9 +134,9 @@ class StatusMeasurement:
                     dev._save_status(f"{STATUS_MEASUREMENT_BASE_PATH}/{name}", res, dgw)
                     continue
 
-                if hasattr(dev, '_save_status'):
-                    dev._save_status(f"{STATUS_MEASUREMENT_BASE_PATH}/{name}", res, dgw)
-                    continue
+                # if hasattr(dev, '_save_status'):
+                #     dev._save_status(f"{STATUS_MEASUREMENT_BASE_PATH}/{name}", res, dgw)
+                #     continue
 
                 # append time stamp
                 if isinstance(res, dict):
