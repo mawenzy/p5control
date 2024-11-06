@@ -15,7 +15,7 @@ MEASUREMENT_BASE_PATH = "/measurement"
 STATUS_MEASUREMENT_BASE_PATH = "/status"
 """path in the hdf5 file under which the statuses are stored"""
 
-CALLBACK_THREAD_COUNT = 5
+CALLBACK_THREAD_COUNT = 10
 """The amount of threads in the thread pool responsible for callbacks."""
 
 GATEWAY_ADDRESS = "localhost"
