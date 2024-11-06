@@ -12,6 +12,9 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+
+# HDF5_USE_FILE_LOCKING = 'FALSE'
+
 class HDF5FileInterfaceError(Exception):
     """Exceptions concerning the HDF5FileInterface"""
 
@@ -149,6 +152,7 @@ class HDF5FileInterface():
                 dset.resize(dset.shape[0] + arr.shape[0], axis=0)
                 dset[-arr.shape[0]:] = arr
 
+
         # set attributes
         for (key, value) in kwargs.items():
             logger.debug('attribute for "%s", "%s" : %s', path, key, value)
@@ -157,6 +161,8 @@ class HDF5FileInterface():
         # callbacks
         if self._callback_queue:
             self._callback_queue.put((path, arr, False))
+
+        self._f.flush()
 
     def _convert_to_array(
         self,
