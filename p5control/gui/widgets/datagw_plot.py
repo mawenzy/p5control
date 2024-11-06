@@ -50,6 +50,7 @@ class DataGatewayPlot(QSplitter):
         # plot 
         self.plot_widget = PlotWidget()
         self.plot_widget.setClipToView(True)
+        self.plot_widget.showGrid(x=True, y=True)
         # self.plot_widget.setLimits(xMax=0)
         self.plot_widget.setRange(xRange=[-100, 0])
         self.plot_widget.setLabel('bottom', 'Time', 's')
