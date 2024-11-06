@@ -50,6 +50,7 @@ colors = OrderedDict(
         ('white', clouds),
         ('orange', orange),
         ('gray', concrete),
+        
         ('seeblau', seeblau),
         ('peach', peach),
         ('seegrau', seegrau),
